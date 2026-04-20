@@ -157,6 +157,8 @@ tr:hover td{background:#FEF6F0;}
 .einp:focus{outline:none;border-color:var(--N);}
 .minp{width:60px;padding:5px 8px;border:1.5px solid var(--Gb);border-radius:6px;font-size:13px;text-align:center;font-family:var(--f);}
 .minp:focus{outline:none;border-color:var(--A);}
+.pricep{width:110px;padding:5px 8px;border:1.5px solid var(--Gb);border-radius:6px;font-size:13px;text-align:right;font-family:var(--f);}
+.pricep:focus{outline:none;border-color:var(--V);}
 
 /* BADGES */
 .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
@@ -475,6 +477,8 @@ tr:hover td{background:#FEF6F0;}
           <th style="text-align:right">Salidas</th>
           <th style="text-align:right">Stock Actual</th>
           <th style="text-align:right" title="Alerta m&#237;nima">M&#237;n.</th>
+          <th style="text-align:right">Precio Unit.</th>
+          <th style="text-align:right">Precio Total</th>
           <th id="th-edit" style="display:none;text-align:center">Editar ini.</th>
         </tr></thead>
         <tbody id="tbody-stk"></tbody>
@@ -949,6 +953,12 @@ const LEGACY_KEYS = {
 };
 const FIREBASE_CONFIG = window.NICOLA_FIREBASE_CONFIG || null;
 const FIREBASE_DB_PATH = window.NICOLA_FIREBASE_DB_PATH || 'apps/corralonNicola/estado';
+const KS = LEGACY_KEYS.stock;
+const KM = LEGACY_KEYS.movs;
+const KP = LEGACY_KEYS.prods;
+const KMN = LEGACY_KEYS.mins;
+const KA = LEGACY_KEYS.audit;
+const KC = LEGACY_KEYS.cierres;
 
 function normTxt(v){
   return String(v||'').trim().replace(/\s+/g,' ').toUpperCase();
@@ -1178,6 +1188,7 @@ let PRODS = PBASE.map(normalizarProd);
 let stock = {};
 let movs  = [];
 let mins  = {};
+let prices = {};
 let auditLog = [];
 let cierres = [];
 let rol   = null, selrol = null;
@@ -1191,6 +1202,7 @@ let remotoInicializado=false, remotoSuscripto=false;
 // ═══════════════════════════════════
 // PERSISTENCIA — localStorage (mismo navegador) + BroadcastChannel (multi-tab)
 // ═══════════════════════════════════
+/*
 let bc = null;
 try { bc = new BroadcastChannel('nicola_sync'); } catch(e){}
 
@@ -1291,6 +1303,209 @@ if(bc) bc.onmessage = e => {
 };
 
 // ═══════════════════════════════════
+*/
+// PERSISTENCIA WEB COMPARTIDA
+// ═══════════════════════════════════
+function resetEstadoBase(){
+  PRODS = PBASE.map(normalizarProd);
+  stock = {};
+  movs = [];
+  mins = {};
+  prices = {};
+  auditLog = [];
+  cierres = [];
+  PRODS.forEach(p=>{ stock[p.c]={inicial:0,entradas:0,salidas:0}; mins[p.c]=0; prices[p.c]=0; });
+}
+
+function ordenarYCompletarEstado(){
+  PRODS.sort((a,b)=>a.c-b.c);
+  PRODS.forEach(p=>{
+    if(!stock[p.c]) stock[p.c]={inicial:0,entradas:0,salidas:0};
+    if(typeof mins[p.c]==='undefined') mins[p.c]=0;
+    if(typeof prices[p.c]==='undefined') prices[p.c]=0;
+  });
+}
+
+function aplicarProductosGuardados(lista){
+  if(!Array.isArray(lista)) return;
+  lista.forEach(raw=>{
+    const prod=normalizarProd(raw);
+    const actual=PRODS.find(x=>x.c===prod.c);
+    if(actual) Object.assign(actual,prod);
+    else PRODS.push(prod);
+  });
+}
+
+function aplicarEstadoCompartido(data){
+  resetEstadoBase();
+  if(data&&typeof data==='object'){
+    if(data.stock&&typeof data.stock==='object') Object.assign(stock,data.stock);
+    if(Array.isArray(data.movs)) movs=data.movs;
+    if(data.mins&&typeof data.mins==='object') Object.assign(mins,data.mins);
+    if(data.prices&&typeof data.prices==='object') Object.assign(prices,data.prices);
+    aplicarProductosGuardados(data.PRODS);
+    if(Array.isArray(data.auditLog)) auditLog=data.auditLog;
+    if(Array.isArray(data.cierres)) cierres=data.cierres;
+  }
+  ordenarYCompletarEstado();
+}
+
+function cargar() {
+  if(estadoRemotoCache) aplicarEstadoCompartido(estadoRemotoCache);
+  else {
+    resetEstadoBase();
+    ordenarYCompletarEstado();
+  }
+}
+
+function estadoSerializable(){
+  return {
+    schemaVersion:2,
+    stock,
+    movs,
+    mins,
+    prices,
+    PRODS,
+    auditLog:auditLog.slice(-400),
+    cierres,
+    updatedAt:firebase.database.ServerValue.TIMESTAMP
+  };
+}
+
+function setSaveState(kind,texto){
+  const dot=document.getElementById('savedot'), txt=document.getElementById('savetxt');
+  if(!dot) return;
+  dot.classList.remove('saving');
+  if(kind==='saving') dot.classList.add('saving');
+  dot.style.background = kind==='error' ? '#FCA5A5' : '';
+  if(txt&&texto) txt.textContent=texto;
+}
+
+function firebaseConfigurado(){
+  return !!(window.firebase&&FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.databaseURL&&FIREBASE_CONFIG.apiKey.indexOf('REEMPLAZAR_')!==0);
+}
+
+function iniciarFirebase(){
+  if(estadoRef) return true;
+  if(!firebaseConfigurado()) return false;
+  try{
+    fbApp = firebase.apps&&firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database(fbApp);
+    estadoRef = db.ref(FIREBASE_DB_PATH);
+    return true;
+  }catch(err){
+    console.error('Error iniciando Firebase',err);
+    return false;
+  }
+}
+
+function leerLegacyLocal(){
+  try{
+    const data={};
+    const s=localStorage.getItem(LEGACY_KEYS.stock); if(s) data.stock=JSON.parse(s);
+    const m=localStorage.getItem(LEGACY_KEYS.movs); if(m) data.movs=JSON.parse(m);
+    const mn=localStorage.getItem(LEGACY_KEYS.mins); if(mn) data.mins=JSON.parse(mn);
+    const pc=localStorage.getItem('nicola_prices_v1'); if(pc) data.prices=JSON.parse(pc);
+    const pr=localStorage.getItem(LEGACY_KEYS.prods); if(pr) data.PRODS=JSON.parse(pr);
+    const au=localStorage.getItem(LEGACY_KEYS.audit); if(au) data.auditLog=JSON.parse(au);
+    const ci=localStorage.getItem(LEGACY_KEYS.cierres); if(ci) data.cierres=JSON.parse(ci);
+    return data;
+  }catch(err){
+    console.warn('No se pudo leer el backup local legado',err);
+    return null;
+  }
+}
+
+function hayDatosLegacy(data){
+  if(!data||typeof data!=='object') return false;
+  if(Array.isArray(data.movs)&&data.movs.length) return true;
+  if(Array.isArray(data.auditLog)&&data.auditLog.length) return true;
+  if(Array.isArray(data.cierres)&&data.cierres.length) return true;
+  if(Array.isArray(data.PRODS)&&data.PRODS.length) return true;
+  if(data.mins&&Object.values(data.mins).some(v=>Number(v)>0)) return true;
+  if(data.prices&&Object.values(data.prices).some(v=>Number(v)>0)) return true;
+  if(data.stock&&Object.values(data.stock).some(s=>Number(s?.inicial)||Number(s?.entradas)||Number(s?.salidas))) return true;
+  return false;
+}
+
+function limpiarLegacyLocal(){
+  try{
+    Object.values(LEGACY_KEYS).forEach(k=>localStorage.removeItem(k));
+    localStorage.removeItem('nicola_prices_v1');
+  }catch(e){}
+}
+
+function suscribirEstadoCompartido(){
+  if(remotoSuscripto||!iniciarFirebase()) return;
+  remotoSuscripto=true;
+  setSaveState('saving','Conectando...');
+  estadoRef.on('value',snap=>{
+    const data=snap.val();
+    if(!data){
+      const legacy=leerLegacyLocal();
+      const payload = hayDatosLegacy(legacy)
+        ? (aplicarEstadoCompartido(legacy), estadoSerializable())
+        : (cargar(), estadoSerializable());
+      estadoRef.set(payload)
+        .then(()=>{ if(hayDatosLegacy(legacy)) limpiarLegacyLocal(); })
+        .catch(err=>{
+          console.error('No se pudo inicializar el estado remoto',err);
+          setSaveState('error','Error nube');
+          if(rol) toast('No se pudo inicializar la nube','err');
+        });
+      return;
+    }
+    estadoRemotoCache=data;
+    aplicarEstadoCompartido(data);
+    remotoInicializado=true;
+    limpiarLegacyLocal();
+    setSaveState('ok','Guardado ✓');
+    if(rol){
+      armarSelects();
+      renderTodo();
+    }
+  },err=>{
+    console.error('Error de sincronizacion remota',err);
+    setSaveState('error','Sin conexion');
+    if(rol) toast('Error de sincronizacion en la nube','err');
+  });
+}
+
+function guardar(inmediato=false) {
+  if(!iniciarFirebase()){
+    setSaveState('error','Configurar nube');
+    if(rol) toast('Falta configurar Firebase en firebase-config.js','err');
+    return Promise.reject(new Error('Firebase no configurado'));
+  }
+  setSaveState('saving','Guardando...');
+  clearTimeout(saveT);
+  return new Promise((resolve,reject)=>{
+    saveT=setTimeout(()=>{
+      estadoRef.set(estadoSerializable())
+        .then(()=>{
+          remotoInicializado=true;
+          setSaveState('ok','Guardado ✓');
+          resolve();
+        })
+        .catch(err=>{
+          console.error('Error al guardar en la nube',err);
+          setSaveState('error','Error nube');
+          if(rol) toast('Error al guardar en la nube','err');
+          reject(err);
+        });
+    },inmediato?0:350);
+  });
+}
+
+if(iniciarFirebase()){
+  suscribirEstadoCompartido();
+}else{
+  console.warn('Firebase no esta configurado. Completá firebase-config.js para usar la persistencia web.');
+  cargar();
+  setSaveState('error','Configurar nube');
+}
+
+// ═══════════════════════════════════
 // LOGIN / ROL
 // ═══════════════════════════════════
 function selRol(r){
@@ -1304,6 +1519,11 @@ function selRol(r){
 }
 
 function doLogin(){
+  if(!selrol){document.getElementById('lerr').textContent='Selecciona un acceso.';return;}
+  if(!iniciarFirebase()){
+    document.getElementById('lerr').textContent='ConfigurÃ¡ Firebase en firebase-config.js.';
+    return;
+  }
   if(!selrol){document.getElementById('lerr').textContent='Seleccioná un acceso.';return;}
   if(selrol==='editor'){
     const pin=document.getElementById('pinin').value;
@@ -1318,6 +1538,7 @@ function doLogin(){
   document.getElementById('login').classList.add('oculto');
   document.getElementById('app').style.display='block';
   cargar(); aplicarRol(); armarSelects(); renderTodo(); actuSub();
+  if(!remotoInicializado) toast('Sincronizando datos desde la nube...','info');
   reiniciarBoleta();
   document.getElementById('ent-fecha').value=hoy();
   document.getElementById('sal-fecha').value=hoy();
@@ -1379,6 +1600,7 @@ function cambFiltro(f,btn){
 function renderStock(){
   const ed=rol==='editor';
   const tbody=document.getElementById('tbody-stk');
+  const totalCols=ed?10:9;
   let lista=PRODS.filter(p=>{
     if(stBus&&!p.n.toLowerCase().includes(stBus)&&!String(p.c).includes(stBus)) return false;
     const t=getStk(p.c), mn=getMin(p.c);
@@ -1387,13 +1609,18 @@ function renderStock(){
     if(stFilt==='cero') return t<=0;
     return true;
   });
-  if(!lista.length){tbody.innerHTML='<tr class="fvacia"><td colspan="8">Sin resultados</td></tr>';renderMets();return;}
+  if(!lista.length){tbody.innerHTML=`<tr class="fvacia"><td colspan="${totalCols}">Sin resultados</td></tr>`;renderMets();return;}
   tbody.innerHTML=lista.map((p,i)=>{
     const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
     const t=getStk(p.c), mn=getMin(p.c);
+    const pu=getPrice(p.c);
+    const total=t*pu;
     const cls=t<=0?'r':t<=Math.max(mn,mn>0?mn:5)&&t>0?'b':'v';
     const alt=i%2===1?'tralt':'';
     const editCell=ed?`<td style="text-align:center"><input type="number" class="einp" value="${s.inicial||0}" min="0" onchange="setIni(${p.c},this.value)"></td>`:'';
+    const priceCell=ed
+      ? `<input type="number" class="pricep" value="${formatPriceInput(pu)}" min="0" step="0.01" inputmode="decimal" onchange="setPrice(${p.c},this.value)" title="Precio unitario">`
+      : `$ ${formatearMonto(pu)}`;
     return `<tr class="${alt}">
       <td class="tdcod">${p.c}</td>
       <td style="max-width:340px;font-size:13px;">${p.n}</td>
@@ -1402,6 +1629,8 @@ function renderStock(){
       <td class="tdnum r">-${s.salidas||0}</td>
       <td class="tdnum ${cls}" style="font-size:15px;font-weight:700;">${t}</td>
       <td style="text-align:right"><input type="number" class="minp" value="${mn}" min="0" ${ed?'':'disabled'} title="M\u00ednimo de alerta" onchange="setMin(${p.c},this.value)"></td>
+      <td style="text-align:right">${priceCell}</td>
+      <td class="tdnum ${total>0?'v':'na'}">$ ${formatearMonto(total)}</td>
       ${editCell}
     </tr>`;
   }).join('');
@@ -1419,6 +1648,28 @@ function setMin(cod,val){
   if(rol!=='editor') return;
   mins[cod]=Math.max(0,parseInt(val)||0);
   guardar(); renderAlBanner();
+}
+
+function parsePrice(val){
+  const num=parseFloat(String(val??'').replace(',','.'));
+  return isFinite(num)&&num>0 ? num : 0;
+}
+
+function formatPriceInput(valor){
+  const num=parsePrice(valor);
+  return num>0 ? Number(num.toFixed(2)).toString() : '0';
+}
+
+function getPrice(cod){
+  return parsePrice(prices[cod]);
+}
+
+function setPrice(cod,val){
+  if(rol!=='editor') return;
+  prices[cod]=parsePrice(val);
+  guardar();
+  renderStock();
+  toast('Precio unitario actualizado','ok');
 }
 
 function renderMets(){
@@ -2313,13 +2564,14 @@ function manejarExcel(file){
 // ═══════════════════════════════════
 function exportarExcel(){
   const wb=XLSX.utils.book_new();
-  const sD=[['CODIGO','ARTICULO','STOCK INICIAL','ENTRADAS','SALIDAS','STOCK ACTUAL','MINIMO']];
+  const sD=[['CODIGO','ARTICULO','STOCK INICIAL','ENTRADAS','SALIDAS','STOCK ACTUAL','MINIMO','PRECIO UNITARIO','PRECIO TOTAL']];
   PRODS.forEach(p=>{
     const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
-    sD.push([p.c,p.n,s.inicial||0,s.entradas||0,s.salidas||0,getStk(p.c),mins[p.c]||0]);
+    const precio=getPrice(p.c);
+    sD.push([p.c,p.n,s.inicial||0,s.entradas||0,s.salidas||0,getStk(p.c),mins[p.c]||0,precio,getStk(p.c)*precio]);
   });
   const ws1=XLSX.utils.aoa_to_sheet(sD);
-  ws1['!cols']=[{wch:8},{wch:48},{wch:14},{wch:12},{wch:12},{wch:14},{wch:10}];
+  ws1['!cols']=[{wch:8},{wch:48},{wch:14},{wch:12},{wch:12},{wch:14},{wch:10},{wch:15},{wch:15}];
   XLSX.utils.book_append_sheet(wb,ws1,'STOCK');
 
   const eD=[['CODIGO','ARTICULO','CANTIDAD','FECHA','HORA','OBSERVACION']];
