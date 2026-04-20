@@ -423,7 +423,7 @@ tr:hover td{background:#FEF6F0;}
   <div class="tab se" id="tab-historial" onclick="switchTab('historial')">Historial <span class="bdg" id="bdg-hist">0</span></div>
   <div class="tab" id="tab-alertas" onclick="switchTab('alertas')">Alertas <span class="bdg r" id="bdg-aler">0</span></div>
   <div class="tab" id="tab-productos" onclick="switchTab('productos')">Cat&#225;logo</div>
-  <div class="tab se" id="tab-boleta" onclick="switchTab('boleta')">Boleta</div>
+  <div class="tab" id="tab-boleta" onclick="switchTab('boleta')">Boleta</div>
 </div>
 
 <!-- ═══ STOCK ═══ -->
@@ -1322,6 +1322,7 @@ function aplicarRol(){
   document.getElementById('cat-modo').classList.toggle('show',!ed);
   document.getElementById('th-edit').style.display=ed?'':'none';
   document.querySelectorAll('.se').forEach(el=>el.style.display=ed?'':'none');
+  document.getElementById('tab-boleta').style.display=ed?'':'none';
 }
 
 // ═══════════════════════════════════
