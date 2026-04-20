@@ -452,6 +452,7 @@ tr:hover td{background:#FEF6F0;}
     <div class="met"><div class="metlbl">Stock bajo</div><div class="metval a" id="m-bajo">0</div></div>
     <div class="met"><div class="metlbl">Sin stock</div><div class="metval r" id="m-cero">0</div></div>
     <div class="met"><div class="metlbl">Movimientos</div><div class="metval g" id="m-movs">0</div></div>
+    <div class="met"><div class="metlbl">Valor total stock</div><div class="metval na" id="m-stock-value">$ 0.00</div></div>
   </div>
   <div class="panel">
     <div class="ptit"><div class="punto pna"></div>Inventario Actual</div>
@@ -1187,6 +1188,7 @@ const PBASE=[
 let PRODS = PBASE.map(normalizarProd);
 let stock = {};
 let movs  = [];
+let boletas = [];
 let mins  = {};
 let prices = {};
 let auditLog = [];
@@ -1310,6 +1312,7 @@ function resetEstadoBase(){
   PRODS = PBASE.map(normalizarProd);
   stock = {};
   movs = [];
+  boletas = [];
   mins = {};
   prices = {};
   auditLog = [];
@@ -1336,17 +1339,150 @@ function aplicarProductosGuardados(lista){
   });
 }
 
+function crearBoletaId(prefijo='BOL'){
+  return `${prefijo}-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+}
+
+function sanitizarIdBoleta(valor){
+  return String(valor||'')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'')
+    .slice(0,48)||'SIN-ID';
+}
+
+function extraerCampoNota(texto,regex){
+  const match=String(texto||'').match(regex);
+  return match?match[1].trim():'';
+}
+
+function confidenceValida(valor){
+  return Number.isFinite(valor)&&valor>=0;
+}
+
+function normalizarBoletaItems(lista){
+  if(!Array.isArray(lista)) return [];
+  return lista.map(item=>{
+    const cantidad=Number(item?.cantidad)||0;
+    const confianza=item?.confianza==null||item?.confianza===''?null:Number(item.confianza);
+    return {
+      cod:Number(item?.cod)||0,
+      nombre:normTxt(item?.nombre||item?.textoOriginal||'PRODUCTO'),
+      cantidad:cantidad>0?cantidad:0,
+      nota:String(item?.nota||'').trim(),
+      textoOriginal:String(item?.textoOriginal||item?.nombre||'').trim(),
+      confianza:confidenceValida(confianza)?confianza:null
+    };
+  }).filter(item=>item.cod||item.nombre!=='PRODUCTO'||item.cantidad||item.nota);
+}
+
+function normalizarBoletaGuardada(raw){
+  const archivo=raw&&typeof raw.archivo==='object'?raw.archivo:{};
+  const items=normalizarBoletaItems(raw?.items||[]);
+  const ocrItems=normalizarBoletaItems(raw?.ocrItems||[]);
+  const createdAt=Number(raw?.createdAt)||Date.now();
+  const updatedAt=Number(raw?.updatedAt)||createdAt;
+  const monto=Number(raw?.monto)||0;
+  return {
+    id:String(raw?.id||crearBoletaId('REC')),
+    tipo:raw?.tipo==='salida'?'salida':'entrada',
+    numero:String(raw?.numero||'').trim(),
+    fecha:String(raw?.fecha||''),
+    quien:String(raw?.quien||'').trim(),
+    monto:monto>0?monto:0,
+    archivo:{
+      nombre:String(archivo.nombre||raw?.archivoNombre||'').trim(),
+      tipo:String(archivo.tipo||raw?.archivoTipo||'').trim(),
+      tamano:Math.max(0,Number(archivo.tamano||raw?.archivoTamano)||0),
+      guardado:false
+    },
+    lecturaEstado:String(raw?.lecturaEstado||'sin-lectura'),
+    ocrTexto:String(raw?.ocrTexto||'').trim(),
+    ocrItems,
+    items,
+    totalItems:items.length,
+    createdAt,
+    updatedAt,
+    legacy:!!raw?.legacy
+  };
+}
+
+function reconstruirBoletasDesdeMovs(lista){
+  const grupos=new Map();
+  (Array.isArray(lista)?lista:[]).forEach(m=>{
+    const numeroMatch=String(m?.nota||'').match(/Boleta\s*#([^|]+)/i);
+    if(!numeroMatch) return;
+    const tipo=m?.tipo==='salida'?'salida':'entrada';
+    const numero=numeroMatch[1].trim();
+    const fecha=String(m?.fecha||'');
+    const key=`${tipo}|${fecha}|${normTxt(numero)}`;
+    let actual=grupos.get(key);
+    if(!actual){
+      actual=normalizarBoletaGuardada({
+        id:`LEG-${sanitizarIdBoleta(key)}`,
+        tipo,
+        numero,
+        fecha,
+        quien:extraerCampoNota(m.nota,/Carg[oó]:\s*([^|]+)/i),
+        monto:parseMontoTexto(m.nota),
+        archivo:{nombre:extraerCampoNota(m.nota,/Adjunto:\s*([^|]+)/i),tipo:'',tamano:0,guardado:false},
+        items:[],
+        lecturaEstado:'legacy',
+        ocrTexto:'',
+        ocrItems:[],
+        createdAt:Number(m?.ts)||Date.now(),
+        updatedAt:Number(m?.ts)||Date.now(),
+        legacy:true
+      });
+      grupos.set(key,actual);
+    }
+    actual.items.push({
+      cod:Number(m?.cod)||0,
+      nombre:String(m?.nombre||'').trim(),
+      cantidad:Number(m?.cantidad)||0,
+      nota:extraerCampoNota(m.nota,/Detalle:\s*([^|]+)/i),
+      textoOriginal:String(m?.nombre||'').trim(),
+      confianza:null
+    });
+    actual.totalItems=actual.items.length;
+    actual.updatedAt=Math.max(Number(actual.updatedAt)||0,Number(m?.ts)||0);
+    if(!actual.quien) actual.quien=extraerCampoNota(m.nota,/Carg[oó]:\s*([^|]+)/i);
+    if(!actual.monto){
+      const monto=parseMontoTexto(m.nota);
+      if(monto>0) actual.monto=monto;
+    }
+    if(!actual.archivo.nombre) actual.archivo.nombre=extraerCampoNota(m.nota,/Adjunto:\s*([^|]+)/i);
+  });
+  return Array.from(grupos.values()).sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));
+}
+
+function fusionarBoletasGuardadas(guardadas,movimientos){
+  const actuales=Array.isArray(guardadas)?guardadas.map(normalizarBoletaGuardada):[];
+  const legacy=reconstruirBoletasDesdeMovs(movimientos);
+  const claves=new Set(actuales.map(b=>`${b.tipo}|${b.fecha}|${normTxt(b.numero)}`));
+  legacy.forEach(b=>{
+    const clave=`${b.tipo}|${b.fecha}|${normTxt(b.numero)}`;
+    if(!claves.has(clave)){
+      actuales.push(b);
+      claves.add(clave);
+    }
+  });
+  return actuales.sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));
+}
+
 function aplicarEstadoCompartido(data){
   resetEstadoBase();
   if(data&&typeof data==='object'){
     if(data.stock&&typeof data.stock==='object') Object.assign(stock,data.stock);
     if(Array.isArray(data.movs)) movs=data.movs;
+    if(Array.isArray(data.boletas)) boletas=data.boletas;
     if(data.mins&&typeof data.mins==='object') Object.assign(mins,data.mins);
     if(data.prices&&typeof data.prices==='object') Object.assign(prices,data.prices);
     aplicarProductosGuardados(data.PRODS);
     if(Array.isArray(data.auditLog)) auditLog=data.auditLog;
     if(Array.isArray(data.cierres)) cierres=data.cierres;
   }
+  boletas=fusionarBoletasGuardadas(boletas,movs);
   ordenarYCompletarEstado();
 }
 
@@ -1363,6 +1499,7 @@ function estadoSerializable(){
     schemaVersion:2,
     stock,
     movs,
+    boletas,
     mins,
     prices,
     PRODS,
@@ -1588,6 +1725,7 @@ function switchTab(t){
 // ═══════════════════════════════════
 function getStk(cod){ const s=stock[cod]||{inicial:0,entradas:0,salidas:0}; return (s.inicial||0)+(s.entradas||0)-(s.salidas||0); }
 function getMin(cod){ return mins[cod]||0; }
+function getValorProductoStock(cod){ return getStk(cod)*getPrice(cod); }
 
 function filtrarStock(q){ stBus=q.toLowerCase(); renderStock(); }
 function cambFiltro(f,btn){
@@ -1613,7 +1751,7 @@ function renderStock(){
     const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
     const t=getStk(p.c), mn=getMin(p.c);
     const pu=getPrice(p.c);
-    const total=t*pu;
+    const total=getValorProductoStock(p.c);
     const cls=t<=0?'r':t<=Math.max(mn,mn>0?mn:5)&&t>0?'b':'v';
     const alt=i%2===1?'tralt':'';
     const editCell=ed?`<td style="text-align:center"><input type="number" class="einp" value="${s.inicial||0}" min="0" onchange="setIni(${p.c},this.value)"></td>`:'';
@@ -1640,13 +1778,13 @@ function setIni(cod,val){
   if(rol!=='editor') return;
   const n=Math.max(0,parseInt(val)||0);
   if(!stock[cod]) stock[cod]={inicial:0,entradas:0,salidas:0};
-  stock[cod].inicial=n; guardar(); renderMets(); renderAlBanner();
+  stock[cod].inicial=n; guardar(); renderStock(); renderAlBanner();
   toast('Stock inicial actualizado','ok');
 }
 function setMin(cod,val){
   if(rol!=='editor') return;
   mins[cod]=Math.max(0,parseInt(val)||0);
-  guardar(); renderAlBanner();
+  guardar(); renderStock(); renderAlBanner();
 }
 
 function parsePrice(val){
@@ -1672,18 +1810,16 @@ function setPrice(cod,val){
 }
 
 function renderMets(){
-  const ok=PRODS.filter(p=>{const t=getStk(p.c),mn=getMin(p.c);return t>0&&(mn>0?t>mn:t>5);}).length;
-  const bajo=PRODS.filter(p=>{const t=getStk(p.c),mn=getMin(p.c);return t>0&&(mn>0?t<=mn:mn===0&&t<=5);}).length;
-  const cero=PRODS.filter(p=>getStk(p.c)<=0).length;
-  document.getElementById('m-tot').textContent=PRODS.length;
-  document.getElementById('m-ok').textContent=ok;
-  document.getElementById('m-bajo').textContent=bajo;
-  document.getElementById('m-cero').textContent=cero;
-  document.getElementById('m-movs').textContent=movs.length;
-  document.getElementById('bdg-ok').textContent=ok;
-  document.getElementById('bdg-hist').textContent=movs.length;
-  const aler=bajo+cero;
-  document.getElementById('bdg-aler').textContent=aler;
+  const estado=getEstadoStockActual();
+  document.getElementById('m-tot').textContent=estado.totalProductos.toLocaleString('es-UY');
+  document.getElementById('m-ok').textContent=estado.ok.toLocaleString('es-UY');
+  document.getElementById('m-bajo').textContent=estado.bajo.toLocaleString('es-UY');
+  document.getElementById('m-cero').textContent=estado.cero.toLocaleString('es-UY');
+  document.getElementById('m-movs').textContent=estado.movimientos.toLocaleString('es-UY');
+  document.getElementById('m-stock-value').textContent=`$ ${formatearMonto(estado.valorTotal)}`;
+  document.getElementById('bdg-ok').textContent=estado.ok;
+  document.getElementById('bdg-hist').textContent=estado.movimientos;
+  document.getElementById('bdg-aler').textContent=estado.alertas;
 }
 
 function renderAlBanner(){
@@ -1948,6 +2084,36 @@ function confirmarBoleta(){
   if(!boletaLineas.length) return toast('Agreg\u00e1 al menos un producto','err');
 
   const hora=new Date().toTimeString().slice(0,5);
+  const boletaId=crearBoletaId();
+  const itemsBoleta=normalizarBoletaItems(boletaLineas.map(item=>({
+    cod:item.cod,
+    nombre:item.nombre,
+    cantidad:item.cantidad,
+    nota:item.nota,
+    textoOriginal:item.nombre,
+    confianza:null
+  })));
+  const boletaRegistro=normalizarBoletaGuardada({
+    id:boletaId,
+    tipo:boletaTipo,
+    numero,
+    fecha,
+    quien,
+    monto:isFinite(monto)&&monto>0?monto:0,
+    archivo:{
+      nombre:boletaArchivoNombre,
+      tipo:boletaArchivoTipo,
+      tamano:boletaArchivoTamano,
+      guardado:false
+    },
+    lecturaEstado:boletaArchivoNombre?'pendiente':'manual',
+    ocrTexto:'',
+    ocrItems:[],
+    items:itemsBoleta,
+    createdAt:Date.now(),
+    updatedAt:Date.now(),
+    legacy:false
+  });
   for(const item of boletaLineas){
     if(!stock[item.cod]) stock[item.cod]={inicial:0,entradas:0,salidas:0};
     if(boletaTipo==='salida'&&item.cantidad>getStk(item.cod)) return toast(`Stock insuficiente para #${item.cod}`,'err');
@@ -1961,8 +2127,9 @@ function confirmarBoleta(){
       boletaArchivoNombre?`Adjunto: ${boletaArchivoNombre}`:'',
       item.nota?`Detalle: ${item.nota}`:''
     ].filter(Boolean).join(' | ');
-    movs.push({tipo:boletaTipo,cod:item.cod,nombre:item.nombre,cantidad:item.cantidad,fecha,hora,nota,ts:Date.now()+item.cod});
+    movs.push({tipo:boletaTipo,cod:item.cod,nombre:item.nombre,cantidad:item.cantidad,fecha,hora,nota,boletaId,boletaNumero:numero,ts:Date.now()+item.cod});
   }
+  boletas.unshift(boletaRegistro);
 
   guardar();
   renderTodo();
@@ -2137,7 +2304,8 @@ function parseMontoTexto(texto){
 function resumirMovimientos(lista){
   const resumen={movimientos:lista.length,entradas:0,salidas:0,unidadesEntrada:0,unidadesSalida:0,balance:0,productos:0,boletas:0,montoBoletas:0};
   const prods=new Set();
-  const boletas=new Set();
+  const vistas=new Set();
+  const boletasPorId=new Map((Array.isArray(boletas)?boletas:[]).map(b=>[String(b.id),b]));
   lista.forEach(m=>{
     const qty=Number(m.cantidad)||0;
     prods.add(m.cod);
@@ -2148,11 +2316,21 @@ function resumirMovimientos(lista){
       resumen.salidas+=1;
       resumen.unidadesSalida+=qty;
     }
+    const boletaId=m?.boletaId!=null?String(m.boletaId):'';
+    if(boletaId){
+      const clave=`id:${boletaId}`;
+      if(!vistas.has(clave)){
+        vistas.add(clave);
+        resumen.boletas+=1;
+        resumen.montoBoletas+=Number(boletasPorId.get(boletaId)?.monto)||parseMontoTexto(m.nota);
+      }
+      return;
+    }
     const boleta=String(m.nota||'').match(/Boleta\s*#([^|]+)/i);
     if(boleta){
-      const clave=boleta[1].trim();
-      if(clave&&!boletas.has(clave)){
-        boletas.add(clave);
+      const clave=`num:${boleta[1].trim()}`;
+      if(!vistas.has(clave)){
+        vistas.add(clave);
         resumen.boletas+=1;
         resumen.montoBoletas+=parseMontoTexto(m.nota);
       }
@@ -2164,16 +2342,30 @@ function resumirMovimientos(lista){
 }
 
 function getEstadoStockActual(){
-  let conStock=0, bajo=0, cero=0, unidades=0;
+  let ok=0, conStock=0, bajo=0, cero=0, unidades=0, valorTotal=0;
   PRODS.forEach(p=>{
     const total=getStk(p.c);
     const min=getMin(p.c);
+    const stockOk=total>0&&(min>0?total>min:total>5);
+    const stockBajo=total>0&&(min>0?total<=min:min===0&&total<=5);
     unidades+=total;
+    valorTotal+=getValorProductoStock(p.c);
+    if(stockOk) ok+=1;
     if(total>0) conStock+=1;
     if(total<=0) cero+=1;
-    if(total>0&&(min>0?total<=min:min===0&&total<=5)) bajo+=1;
+    if(stockBajo) bajo+=1;
   });
-  return {conStock,bajo,cero,unidades};
+  return {
+    totalProductos:PRODS.length,
+    ok,
+    conStock,
+    bajo,
+    cero,
+    alertas:bajo+cero,
+    movimientos:movs.length,
+    unidades,
+    valorTotal
+  };
 }
 
 function getMovsPorPeriodo(periodo){
@@ -2270,7 +2462,7 @@ function renderHist(){
   }
   listaCont.innerHTML=lista.map(m=>{
     const entrada=m.tipo==='entrada';
-    const conBoleta=/Boleta\s*#/i.test(String(m.nota||''));
+    const conBoleta=!!m.boletaId||/Boleta\s*#/i.test(String(m.nota||''));
     const tipoTxt=entrada?(conBoleta?'Entrada con boleta':'Entrada'):(conBoleta?'Salida con boleta':'Salida');
     return `<div class="histitem">
       <div class="histicon ${entrada?'in':'out'}">${entrada?'+':'-'}</div>
@@ -2329,8 +2521,8 @@ function cerrarMesHistorial(){
 
 function borrarHist(){
   if(rol!=='editor') return;
-  if(!confirm('\u00bfBorrar todo el historial? Los stocks se mantienen y los cierres mensuales guardados no se borran.')) return;
-  movs=[]; guardar(); renderTodo(); toast('Historial borrado','info');
+  if(!confirm('\u00bfBorrar todo el historial? Los stocks se mantienen y los cierres mensuales guardados no se borran. Las boletas guardadas tambi\u00e9n se eliminar\u00e1n.')) return;
+  movs=[]; boletas=[]; guardar(); renderTodo(); toast('Historial y boletas borrados','info');
 }
 
 // ═══════════════════════════════════
@@ -2567,8 +2759,10 @@ function exportarExcel(){
   PRODS.forEach(p=>{
     const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
     const precio=getPrice(p.c);
-    sD.push([p.c,p.n,s.inicial||0,s.entradas||0,s.salidas||0,getStk(p.c),mins[p.c]||0,precio,getStk(p.c)*precio]);
+    sD.push([p.c,p.n,s.inicial||0,s.entradas||0,s.salidas||0,getStk(p.c),mins[p.c]||0,precio,getValorProductoStock(p.c)]);
   });
+  sD.push([]);
+  sD.push(['','','','','','','','VALOR TOTAL STOCK',getEstadoStockActual().valorTotal]);
   const ws1=XLSX.utils.aoa_to_sheet(sD);
   ws1['!cols']=[{wch:8},{wch:48},{wch:14},{wch:12},{wch:12},{wch:14},{wch:10},{wch:15},{wch:15}];
   XLSX.utils.book_append_sheet(wb,ws1,'STOCK');
@@ -2592,6 +2786,26 @@ function exportarExcel(){
   });
   const ws4=XLSX.utils.aoa_to_sheet(aD);
   XLSX.utils.book_append_sheet(wb,ws4,'ALERTAS');
+
+  const bD=[['ID','TIPO','NUMERO','FECHA','QUIEN CARGA','MONTO','ARCHIVO','ESTADO LECTURA','ITEMS','CREADA']];
+  boletas.forEach(b=>{
+    const items=(b.items||[]).map(item=>`[${item.cod||''}] ${item.nombre} x ${item.cantidad}${item.nota?` (${item.nota})`:''}`).join(' | ');
+    bD.push([
+      b.id||'',
+      b.tipo||'',
+      b.numero||'',
+      b.fecha||'',
+      b.quien||'',
+      Number(b.monto)||0,
+      b.archivo?.nombre||'',
+      b.lecturaEstado||'',
+      items,
+      b.createdAt?new Date(b.createdAt).toLocaleString('es-UY'):''
+    ]);
+  });
+  const ws5=XLSX.utils.aoa_to_sheet(bD);
+  ws5['!cols']=[{wch:24},{wch:10},{wch:14},{wch:14},{wch:18},{wch:12},{wch:28},{wch:16},{wch:90},{wch:22}];
+  XLSX.utils.book_append_sheet(wb,ws5,'BOLETAS');
 
   XLSX.writeFile(wb,`nicola_stock_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.xlsx`);
   toast('Excel exportado correctamente','ok');
