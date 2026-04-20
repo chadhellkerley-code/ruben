@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Corralón Nicola</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --N:#E8620A;--Nm:#F07830;--Nc:#FEF0E7;--Nd:#B04A00;
+  --K:#1A1A1A;--Km:#2D2D2D;--Kc:#3A3A3A;
+  --G:#6B6B6B;--Gc:#F5F5F3;--Gb:#E0E0DC;
+  --V:#2E7D32;--Vc:#E8F5E9;
+  --R:#C62828;--Rc:#FFEBEE;
+  --A:#F57F17;--Ac:#FFFDE7;
+  --W:#FFFFFF;
+  --r:10px;--rl:14px;
+  --f:'Segoe UI',system-ui,sans-serif;
+  --sh:0 2px 12px rgba(0,0,0,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--f);background:#F0EDE8;color:var(--K);font-size:14px;min-height:100vh;}
+
+/* LOGIN */
+#login{position:fixed;inset:0;background:var(--K);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+#login.oculto{display:none;}
+.lbox{background:var(--W);border-radius:20px;padding:44px 48px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.45);}
+.llogo{font-size:52px;text-align:center;margin-bottom:6px;}
+.ltit{font-size:22px;font-weight:700;text-align:center;color:var(--K);margin-bottom:3px;}
+.lsub{font-size:13px;color:var(--G);text-align:center;margin-bottom:28px;}
+.rolgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+.rolbtn{border:2px solid var(--Gb);border-radius:14px;padding:22px 14px;text-align:center;cursor:pointer;transition:all .18s;background:white;font-family:var(--f);}
+.rolbtn:hover,.rolbtn.sel{border-color:var(--N);background:var(--Nc);}
+.rolico{font-size:32px;margin-bottom:8px;}
+.rolnom{font-size:14px;font-weight:700;color:var(--K);}
+.roldesc{font-size:11px;color:var(--G);margin-top:3px;}
+.pingrp{display:none;margin-bottom:18px;}
+.pingrp.show{display:block;}
+.pingrp label{font-size:12px;font-weight:600;color:var(--G);display:block;margin-bottom:7px;}
+.pinin{width:100%;padding:14px;border:2px solid var(--Gb);border-radius:var(--r);font-size:22px;letter-spacing:10px;text-align:center;font-family:var(--f);outline:none;transition:border-color .15s;}
+.pinin:focus{border-color:var(--N);}
+.pinin.err{border-color:var(--R);animation:shake .3s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.lbtn{width:100%;padding:15px;background:var(--N);color:white;border:none;border-radius:var(--r);font-size:15px;font-weight:700;cursor:pointer;font-family:var(--f);transition:background .15s;margin-top:6px;}
+.lbtn:hover{background:var(--Nd);}
+.lerr{color:var(--R);font-size:12px;text-align:center;margin-top:10px;min-height:18px;}
+
+/* BANNER ROL */
+.brol{display:none;align-items:center;gap:8px;padding:8px 20px;font-size:12px;font-weight:500;flex-wrap:wrap;}
+.brol.show{display:flex;}
+.brol.visor{background:var(--Km);color:white;}
+.brol.editor{background:var(--Nd);color:white;}
+.rbdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5);flex-shrink:0;}
+.rbbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--f);white-space:nowrap;}
+.rbbtn:hover{background:rgba(255,255,255,.28);}
+#saveind{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;opacity:.8;}
+#savedot{width:7px;height:7px;border-radius:50%;background:#86EFAC;transition:background .3s;}
+#savedot.saving{background:#FDE68A;}
+
+/* HEADER */
+.hdr{background:var(--K);color:white;padding:0 22px;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:0 3px 12px rgba(0,0,0,.3);}
+.hdriz{display:flex;align-items:center;gap:14px;}
+.hdrmar{display:flex;align-items:center;gap:10px;}
+.hdrico{font-size:26px;}
+.hdrtit{font-size:17px;font-weight:700;color:white;}
+.hdrsub{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;}
+.hdrder{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.hbtn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;padding:7px 13px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:var(--f);transition:background .15s;white-space:nowrap;}
+.hbtn:hover{background:rgba(255,255,255,.22);}
+.hbtn.na{background:var(--N);border-color:var(--N);}.hbtn.na:hover{background:var(--Nd);}
+
+/* NAV */
+.nav{background:var(--Km);display:flex;padding:0 22px;overflow-x:auto;border-bottom:1px solid rgba(255,255,255,.08);}
+.tab{padding:12px 17px;font-size:13px;font-weight:500;cursor:pointer;color:rgba(255,255,255,.5);border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .15s;user-select:none;white-space:nowrap;}
+.tab:hover{color:rgba(255,255,255,.85);}
+.tab.active{color:var(--N);border-bottom-color:var(--N);}
+.tab .bdg{display:inline-block;background:var(--N);color:white;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:5px;font-weight:700;}
+.tab .bdg.v{background:var(--V);}
+.tab .bdg.r{background:var(--R);}
+.tab .bdg.a{background:var(--A);}
+.tab.se{display:none;}
+
+/* ALERTA BANNER */
+#abanner{display:none;background:var(--R);color:white;padding:9px 22px;font-size:13px;font-weight:500;cursor:pointer;align-items:center;gap:8px;}
+#abanner.show{display:flex;}
+#abanner:hover{background:#a52020;}
+
+/* SECCIONES */
+.sec{display:none;padding:22px;max-width:1160px;margin:0 auto;}
+.sec.active{display:block;}
+
+/* METRICS */
+.mets{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:22px;}
+.met{background:var(--W);border:1px solid var(--Gb);border-radius:var(--rl);padding:15px 17px;box-shadow:var(--sh);}
+.metlbl{font-size:11px;color:var(--G);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.metval{font-size:26px;font-weight:700;}
+.metval.na{color:var(--N);}.metval.v{color:var(--V);}.metval.r{color:var(--R);}.metval.a{color:var(--A);}.metval.g{color:var(--G);}
+
+/* PANEL */
+.panel{background:var(--W);border:1px solid var(--Gb);border-radius:var(--rl);padding:22px;margin-bottom:18px;box-shadow:var(--sh);}
+.ptit{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.punto{width:10px;height:10px;border-radius:50%;}
+.pna{background:var(--N);}.pv{background:var(--V);}.pr{background:var(--R);}
+
+/* FORMS */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+.fgrp{display:flex;flex-direction:column;gap:5px;}
+.fgrp label{font-size:12px;font-weight:600;color:var(--G);}
+.fgrp input,.fgrp select,.fgrp textarea{padding:10px 13px;border:1.5px solid var(--Gb);border-radius:var(--r);font-size:13px;font-family:var(--f);color:var(--K);background:white;outline:none;transition:border-color .15s,box-shadow .15s;}
+.fgrp input:focus,.fgrp select:focus,.fgrp textarea:focus{border-color:var(--N);box-shadow:0 0 0 3px rgba(232,98,10,.12);}
+.fgrp input.inp-na{background:var(--Nc);border-color:var(--Nm);font-weight:600;}
+.prevsel{background:var(--Gc);border:1px solid var(--Gb);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--G);min-height:44px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.prevnom{font-weight:600;color:var(--K);flex:1;}
+.sbadge{padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;}
+.sbv{background:var(--Vc);color:#1b5e20;}.sba{background:var(--Ac);color:#7f3d00;}.sbr{background:var(--Rc);color:#7B0000;}
+
+/* BOTONES */
+.btn{padding:10px 20px;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:var(--f);transition:all .15s;}
+.btn:active{transform:scale(.97);}
+.btn-na{background:var(--N);color:white;}.btn-na:hover{background:var(--Nd);}
+.btn-k{background:var(--K);color:white;}.btn-k:hover{background:#000;}
+.btn-v{background:var(--V);color:white;}.btn-v:hover{background:#1b5e20;}
+.btn-r{background:var(--R);color:white;}.btn-r:hover{background:#7B0000;}
+.btn-ol{background:white;color:var(--K);border:1.5px solid var(--Gb);}.btn-ol:hover{background:var(--Gc);}
+.bfull{width:100%;margin-top:8px;}
+
+/* SEARCH */
+.swrap{position:relative;margin-bottom:14px;}
+.swrap input{width:100%;padding:10px 14px 10px 40px;border:1.5px solid var(--Gb);border-radius:var(--r);font-size:13px;font-family:var(--f);outline:none;background:white;}
+.swrap input:focus{border-color:var(--N);}
+.sico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--G);pointer-events:none;font-size:16px;}
+
+/* FILTROS */
+.filtros{display:flex;gap:7px;flex-wrap:wrap;}
+.fbtn{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--Gb);background:white;color:var(--G);transition:all .15s;}
+.fbtn:hover{border-color:var(--N);color:var(--N);}
+.fbtn.on{background:var(--N);color:white;border-color:var(--N);}
+
+/* TABLA */
+.twrap{background:var(--W);border:1px solid var(--Gb);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh);}
+.tscroll{overflow-x:auto;max-height:540px;overflow-y:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead{position:sticky;top:0;z-index:10;}
+th{background:var(--K);color:white;padding:10px 13px;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+td{padding:9px 13px;border-bottom:1px solid var(--Gc);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FEF6F0;}
+.tralt td{background:#FAFAF8;}.tralt:hover td{background:#FEF6F0;}
+.tdcod{color:var(--G);font-size:11px;font-weight:700;}
+.tdnum{text-align:right;font-weight:700;}
+.tdnum.v{color:#2E7D32;}.tdnum.b{color:#E65100;}.tdnum.r{color:#C62828;}.tdnum.na{color:var(--N);}
+.fvacia td{text-align:center;padding:40px;color:var(--G);}
+.einp{width:80px;padding:5px 8px;border:1.5px solid var(--Gb);border-radius:6px;font-size:13px;text-align:center;font-family:var(--f);}
+.einp:focus{outline:none;border-color:var(--N);}
+.minp{width:60px;padding:5px 8px;border:1.5px solid var(--Gb);border-radius:6px;font-size:13px;text-align:center;font-family:var(--f);}
+.minp:focus{outline:none;border-color:var(--A);}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.bge{background:var(--Vc);color:#1b5e20;}
+.bgs{background:var(--Rc);color:#7B0000;}
+.bga{background:var(--Ac);color:#7f3d00;}
+
+/* AVISO VISOR */
+.avis{background:var(--Ac);border:1px solid #FCD34D;border-radius:var(--rl);padding:12px 18px;margin-bottom:18px;font-size:13px;color:#7f3d00;display:none;align-items:center;gap:10px;}
+.avis.show{display:flex;}
+
+/* ALERTAS */
+.ait{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--r);margin-bottom:8px;border:1px solid;}
+.acero{background:var(--Rc);border-color:#f7c1c1;}
+.abajo{background:var(--Ac);border-color:#FAC775;}
+
+/* EDITOR PRODUCTOS */
+.pedfila{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--Gc);}
+.pedcod{font-size:11px;color:var(--G);width:36px;font-weight:700;flex-shrink:0;}
+.pedinp{flex:1;padding:7px 10px;border:1.5px solid var(--Gb);border-radius:7px;font-size:13px;font-family:var(--f);outline:none;}
+.pedinp:focus{border-color:var(--N);}
+
+/* BOLETA */
+.boopts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+.boop{border:2px solid var(--Gb);border-radius:16px;padding:18px;background:white;cursor:pointer;transition:all .15s;text-align:left;}
+.boop:hover{border-color:var(--N);transform:translateY(-1px);}
+.boop.on{border-color:var(--N);background:var(--Nc);}
+.boop.v.on{border-color:var(--V);background:var(--Vc);}
+.boop.r.on{border-color:var(--R);background:var(--Rc);}
+.boopttl{font-size:15px;font-weight:700;margin-bottom:4px;}
+.boopsub{font-size:12px;color:var(--G);line-height:1.5;}
+.bostep{display:none;border:1px solid var(--Gb);border-radius:16px;padding:18px;background:#FCFCFA;margin-top:14px;}
+.bostep.show{display:block;}
+.bostephead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.bosteptit{font-size:14px;font-weight:700;}
+.bostepsub{font-size:12px;color:var(--G);}
+.bores{border:1px solid var(--Gb);border-radius:14px;background:white;padding:14px 16px;margin-bottom:14px;}
+.bometa{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;font-size:12px;color:var(--G);}
+.bometaitem{background:var(--Gc);border-radius:10px;padding:10px 12px;}
+.bometaitem strong{display:block;color:var(--K);font-size:13px;margin-bottom:3px;}
+.bohelp{font-size:12px;color:var(--G);margin-bottom:14px;line-height:1.6;}
+.bofile{margin-top:10px;font-size:12px;color:var(--G);min-height:18px;}
+.bolist{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.boline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--Gb);border-radius:12px;background:white;}
+.boline strong{display:block;font-size:13px;margin-bottom:4px;}
+.boline span{font-size:12px;color:var(--G);line-height:1.5;}
+.bocant{font-size:16px;font-weight:700;white-space:nowrap;}
+.bocant.v{color:var(--V);}
+.bocant.r{color:var(--R);}
+.bovacio{padding:18px;border:1px dashed var(--Gb);border-radius:12px;text-align:center;color:var(--G);background:white;}
+.boacc{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.boacc .btn{flex:1;min-width:180px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 26px;border-radius:var(--r);font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:all .25s;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.2);}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{background:var(--V);color:white;}
+#toast.err{background:var(--R);color:white;}
+#toast.info{background:var(--N);color:white;}
+
+/* OVERLAY / MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:500;padding:20px;}
+.ov.show{display:flex;}
+.modal{background:white;border-radius:18px;padding:32px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);}
+.modtit{font-size:17px;font-weight:700;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;}
+.modx{background:var(--Gc);border:none;cursor:pointer;border-radius:50%;width:30px;height:30px;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--G);}
+.modx:hover{background:var(--Gb);}
+.modacc{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+
+/* DROP ZONE */
+.dropz{border:2px dashed var(--Gb);border-radius:var(--rl);padding:38px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px;}
+.dropz:hover,.dropz.drag{border-color:var(--N);background:var(--Nc);}
+.dropico{font-size:42px;margin-bottom:10px;}
+.droptxt{font-size:15px;font-weight:600;color:var(--K);margin-bottom:4px;}
+.dropsub{font-size:12px;color:var(--G);}
+
+/* OCR items */
+.ocritem{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;margin-bottom:7px;background:white;border:1px solid var(--Gb);}
+.ocrnom{font-size:13px;flex:1;}
+.ocrcant{font-size:14px;font-weight:700;color:var(--N);}
+
+/* CATALOGO */
+.catshell{padding:0;}
+.catsubnav{display:flex;gap:10px;flex-wrap:wrap;padding-bottom:16px;margin-bottom:18px;border-bottom:1px solid var(--Gc);}
+.catsub{padding:9px 15px;border:none;background:transparent;border-radius:999px;font-size:13px;font-weight:600;color:var(--G);cursor:pointer;font-family:var(--f);transition:all .15s;}
+.catsub:hover{background:var(--Nc);color:var(--Nd);}
+.catsub.on{background:var(--Nc);color:var(--N);}
+.catsub:disabled{opacity:.5;cursor:not-allowed;}
+.catview{display:none;}
+.catview.show{display:block;}
+.catcall{background:#EEF3FF;border:1px solid #CBD5FF;border-radius:14px;padding:14px 16px;font-size:13px;color:#2436B8;line-height:1.6;margin-bottom:14px;}
+.catfilters{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:10px;align-items:center;margin-bottom:12px;}
+.catmeta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;color:var(--G);}
+.catcount{font-weight:600;color:var(--K);}
+.catlist{display:flex;flex-direction:column;gap:10px;}
+.catcard{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:16px 18px;border:1px solid var(--Gb);border-radius:16px;background:white;box-shadow:0 10px 24px rgba(0,0,0,.04);}
+.catmain{flex:1;min-width:0;}
+.catname{font-size:15px;font-weight:700;color:var(--K);line-height:1.35;}
+.catsubline{font-size:12px;color:var(--G);margin-top:5px;line-height:1.5;}
+.cattags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.catpill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--Gc);color:var(--K);font-size:11px;font-weight:700;}
+.catpill.syn{background:var(--Nc);color:var(--Nd);}
+.catcardacc{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.caticonbtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--Gb);background:white;cursor:pointer;font-size:15px;transition:all .15s;}
+.caticonbtn:hover{border-color:var(--N);color:var(--N);background:var(--Nc);}
+.catempty{padding:28px;border:1px dashed var(--Gb);border-radius:16px;text-align:center;color:var(--G);background:#FCFCFA;}
+.catgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.auditlist{display:flex;flex-direction:column;gap:10px;}
+.audititem{padding:14px 16px;border:1px solid var(--Gb);border-radius:14px;background:white;}
+.audithead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.audittitle{font-size:13px;font-weight:700;color:var(--K);}
+.audittime{font-size:11px;color:var(--G);}
+.auditdesc{font-size:12px;color:var(--G);line-height:1.5;}
+.auditcode{color:var(--N);font-weight:700;}
+.catmode{margin-bottom:14px;font-size:12px;color:#7f3d00;background:var(--Ac);border:1px solid #FCD34D;border-radius:14px;padding:12px 14px;display:none;}
+.catmode.show{display:block;}
+
+/* HISTORIAL */
+.histtop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+.histsub{font-size:12px;color:var(--G);line-height:1.6;max-width:620px;}
+.histfilters{display:grid;grid-template-columns:minmax(0,1.2fr) 180px 180px auto auto;gap:10px;align-items:center;margin-bottom:16px;}
+.histfilters .swrap{margin-bottom:0;}
+.histfilters input[type="month"],.histfilters select{width:100%;padding:10px 13px;border:1.5px solid var(--Gb);border-radius:var(--r);font-size:13px;font-family:var(--f);background:white;outline:none;}
+.histfilters input[type="month"]:focus,.histfilters select:focus{border-color:var(--N);box-shadow:0 0 0 3px rgba(232,98,10,.12);}
+.histstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+.histstat{background:linear-gradient(180deg,#fff 0%,#fcfaf7 100%);border:1px solid var(--Gb);border-radius:16px;padding:16px;box-shadow:0 10px 22px rgba(0,0,0,.05);}
+.histstatlbl{font-size:11px;color:var(--G);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;}
+.histstatval{font-size:24px;font-weight:700;color:var(--K);}
+.histstatval.in{color:var(--V);}
+.histstatval.out{color:var(--R);}
+.histstatval.balance{color:var(--N);}
+.histstatmeta{font-size:11px;color:var(--G);margin-top:6px;line-height:1.5;}
+.histlayout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.95fr);gap:16px;align-items:start;}
+.histfeed,.mespanel{border:1px solid var(--Gb);border-radius:18px;background:#FCFCFA;padding:16px;}
+.histfeedhead,.meshead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.histfeedtit,.mestit{font-size:14px;font-weight:700;color:var(--K);}
+.histfeedsub,.messub{font-size:12px;color:var(--G);}
+.histlist{display:flex;flex-direction:column;gap:10px;max-height:760px;overflow:auto;padding-right:2px;}
+.histitem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--Gb);border-radius:16px;background:white;box-shadow:0 10px 24px rgba(0,0,0,.04);}
+.histicon{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;}
+.histicon.in{background:var(--Vc);color:#1b5e20;}
+.histicon.out{background:var(--Rc);color:#7B0000;}
+.histbody{min-width:0;}
+.histhd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.histname{font-size:14px;font-weight:700;color:var(--K);line-height:1.4;}
+.histmeta{font-size:12px;color:var(--G);line-height:1.6;margin-top:4px;}
+.histnota{font-size:12px;color:var(--K);background:var(--Gc);border-radius:12px;padding:9px 11px;margin-top:10px;line-height:1.55;}
+.histqty{text-align:right;font-size:20px;font-weight:700;white-space:nowrap;}
+.histqty.in{color:var(--V);}
+.histqty.out{color:var(--R);}
+.histqtysub{font-size:11px;color:var(--G);margin-top:5px;}
+.histempty,.cierresvacio{padding:24px;border:1px dashed var(--Gb);border-radius:16px;background:white;text-align:center;color:var(--G);}
+.mesresume{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+.mescard{background:white;border:1px solid var(--Gb);border-radius:14px;padding:12px 13px;}
+.mescardlbl{font-size:11px;color:var(--G);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.mescardval{font-size:18px;font-weight:700;color:var(--K);}
+.mescardval.in{color:var(--V);}
+.mescardval.out{color:var(--R);}
+.mescardval.balance{color:var(--N);}
+.mescta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.mescta .btn{flex:1;min-width:150px;}
+.cierreslist{display:flex;flex-direction:column;gap:10px;}
+.cierrecard{padding:14px;border:1px solid var(--Gb);border-radius:16px;background:white;box-shadow:0 10px 22px rgba(0,0,0,.04);}
+.cierrecard.on{border-color:var(--N);background:var(--Nc);}
+.cierrehead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:7px;}
+.cierrettl{font-size:13px;font-weight:700;color:var(--K);}
+.cierretime{font-size:11px;color:var(--G);}
+.cierremeta{font-size:12px;color:var(--G);line-height:1.55;}
+.cierrestats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}
+.cierrestat{background:#FCFCFA;border-radius:10px;padding:8px 10px;font-size:11px;color:var(--G);}
+.cierrestat strong{display:block;color:var(--K);font-size:13px;margin-top:3px;}
+.cierreacc{margin-top:10px;}
+
+/* RESPONSIVE */
+@media(max-width:640px){
+  .fgrid{grid-template-columns:1fr;}
+  .mets{grid-template-columns:1fr 1fr;}
+  .hdrtit{font-size:14px;}
+  .sec{padding:14px;}
+  .panel{padding:16px;}
+  .modal{padding:22px;}
+  .lbox{padding:28px 22px;}
+  .rolgrid{grid-template-columns:1fr;}
+  .boopts{grid-template-columns:1fr;}
+  .boacc .btn{min-width:100%;}
+  .catfilters,.catgrid,.histfilters,.histlayout,.mesresume,.cierrestats{grid-template-columns:1fr;}
+  .catcard{padding:14px;}
+  .histitem{grid-template-columns:1fr;}
+  .histqty{text-align:left;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ LOGIN ═══════ -->
+<div id="login">
+  <div class="lbox">
+    <div class="llogo">&#127959;</div>
+    <div class="ltit">Stock Corralón Nicola</div>
+    <div class="lsub">Seleccioná tu tipo de acceso</div>
+    <div class="rolgrid">
+      <div class="rolbtn" id="rb-visor" onclick="selRol('visor')">
+        <div class="rolico">&#128065;</div>
+        <div class="rolnom">Mostrador</div>
+        <div class="roldesc">Consultar stock</div>
+      </div>
+      <div class="rolbtn" id="rb-editor" onclick="selRol('editor')">
+        <div class="rolico">&#9999;</div>
+        <div class="rolnom">Editor</div>
+        <div class="roldesc">Gestionar stock</div>
+      </div>
+    </div>
+    <div class="pingrp" id="pingrp">
+      <label>Contraseña del editor</label>
+      <input type="password" class="pinin" id="pinin" placeholder="&#9679;&#9679;&#9679;&#9679;" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="lbtn" onclick="doLogin()">Ingresar &#8594;</button>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<!-- ═══════ APP ═══════ -->
+<div id="app" style="display:none;">
+
+<!-- Banners -->
+<div class="brol visor" id="bv">
+  <div class="rbdot"></div>
+  <span>Acceso <strong>Mostrador</strong> &mdash; Solo lectura</span>
+  <button class="rbbtn" onclick="salir()" style="margin-left:auto;">Salir</button>
+</div>
+<div class="brol editor" id="be">
+  <div class="rbdot"></div>
+  <span>Acceso <strong>Editor</strong></span>
+  <div id="saveind"><div id="savedot"></div><span id="savetxt">Guardado &#10003;</span></div>
+  <button class="rbbtn" onclick="switchTab('boleta')">&#129534; Boletas</button>
+  <button class="rbbtn" onclick="mostrarImport()">&#8593; Importar Excel</button>
+  <button class="rbbtn" onclick="salir()">Salir</button>
+</div>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdriz">
+    <div class="hdrmar">
+      <span class="hdrico">&#127959;</span>
+      <div>
+        <div class="hdrtit">Stock Corral&#243;n Nicola</div>
+        <div class="hdrsub" id="hdrsub">Cargando...</div>
+      </div>
+    </div>
+  </div>
+  <div class="hdrder">
+    <button class="hbtn na" onclick="exportarExcel()">&#8595; Exportar Excel</button>
+    <button class="hbtn" id="hbtn-boleta" style="display:none" onclick="switchTab('boleta')">&#129534; Boleta</button>
+  </div>
+</div>
+
+<!-- Alertas banner -->
+<div id="abanner" onclick="switchTab('alertas')">
+  <span>&#9888;&#65039;</span>
+  <span id="abantxt"></span>
+  <span style="margin-left:auto;font-size:11px;opacity:.8;">Ver alertas &#8594;</span>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <div class="tab active" id="tab-stock" onclick="switchTab('stock')">Stock <span class="bdg v" id="bdg-ok">0</span></div>
+  <div class="tab se" id="tab-boleta" onclick="switchTab('boleta')">Boleta</div>
+  <div class="tab se" id="tab-entrada" onclick="switchTab('entrada')">Entradas</div>
+  <div class="tab se" id="tab-salida" onclick="switchTab('salida')">Salidas</div>
+  <div class="tab se" id="tab-historial" onclick="switchTab('historial')">Historial <span class="bdg" id="bdg-hist">0</span></div>
+  <div class="tab" id="tab-alertas" onclick="switchTab('alertas')">Alertas <span class="bdg r" id="bdg-aler">0</span></div>
+  <div class="tab" id="tab-productos" onclick="switchTab('productos')">Cat&#225;logo</div>
+</div>
+
+<!-- ═══ STOCK ═══ -->
+<div class="sec active" id="sec-stock">
+  <div class="avis" id="avis">&#128065; Modo consulta &mdash; Para modificar, ingresá como Editor.</div>
+  <div class="mets">
+    <div class="met"><div class="metlbl">Total productos</div><div class="metval na" id="m-tot">0</div></div>
+    <div class="met"><div class="metlbl">Stock OK</div><div class="metval v" id="m-ok">0</div></div>
+    <div class="met"><div class="metlbl">Stock bajo</div><div class="metval a" id="m-bajo">0</div></div>
+    <div class="met"><div class="metlbl">Sin stock</div><div class="metval r" id="m-cero">0</div></div>
+    <div class="met"><div class="metlbl">Movimientos</div><div class="metval g" id="m-movs">0</div></div>
+  </div>
+  <div class="panel">
+    <div class="ptit"><div class="punto pna"></div>Inventario Actual</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+      <div class="swrap" style="flex:1;min-width:200px;margin:0;">
+        <span class="sico">&#128269;</span>
+        <input type="text" placeholder="Buscar por nombre o c&#243;digo..." id="stk-buscar" oninput="filtrarStock(this.value)">
+      </div>
+      <div class="filtros">
+        <button class="fbtn on" onclick="cambFiltro('todos',this)">Todos</button>
+        <button class="fbtn" onclick="cambFiltro('ok',this)">OK</button>
+        <button class="fbtn" onclick="cambFiltro('bajo',this)">Bajo</button>
+        <button class="fbtn" onclick="cambFiltro('cero',this)">Sin stock</button>
+      </div>
+    </div>
+    <div class="twrap"><div class="tscroll">
+      <table>
+        <thead><tr>
+          <th style="width:50px">C&#243;d.</th>
+          <th>Art&#237;culo</th>
+          <th style="text-align:right">Inicial</th>
+          <th style="text-align:right">Entradas</th>
+          <th style="text-align:right">Salidas</th>
+          <th style="text-align:right">Stock Actual</th>
+          <th style="text-align:right" title="Alerta m&#237;nima">M&#237;n.</th>
+          <th id="th-edit" style="display:none;text-align:center">Editar ini.</th>
+        </tr></thead>
+        <tbody id="tbody-stk"></tbody>
+      </table>
+    </div></div>
+  </div>
+</div>
+
+<!-- ═══ BOLETA ═══ -->
+<div class="sec" id="sec-boleta">
+  <div class="panel">
+    <div class="ptit"><div class="punto pna"></div>Boletas de Entrada y Salida</div>
+    <p class="bohelp">Eleg&#237; el tipo de boleta, carg&#225; el n&#250;mero y la fecha, y avanz&#225; al siguiente paso. Antes de agregar productos, esta pantalla exige adjuntar una foto desde tu equipo o indicar el monto total de la boleta.</p>
+
+    <div class="boopts">
+      <button type="button" class="boop v" id="boop-entrada" onclick="selBoletaTipo('entrada')">
+        <div class="boopttl">Boleta de Entrada</div>
+        <div class="boopsub">Sirve para sumar mercader&#237;a al stock desde una compra, remito o ingreso.</div>
+      </button>
+      <button type="button" class="boop r" id="boop-salida" onclick="selBoletaTipo('salida')">
+        <div class="boopttl">Boleta de Salida</div>
+        <div class="boopsub">Sirve para descontar mercader&#237;a del stock por venta, entrega o retiro.</div>
+      </button>
+    </div>
+
+    <div class="bostep show" id="bostep-1">
+      <div class="bostephead">
+        <div>
+          <div class="bosteptit">Paso 1. Datos principales</div>
+          <div class="bostepsub">N&#250;mero de boleta y fecha obligatorios. Qui&#233;n carga es opcional.</div>
+        </div>
+      </div>
+      <div class="fgrid">
+        <div class="fgrp">
+          <label>N&#176; de boleta *</label>
+          <input type="text" id="bol-numero" placeholder="Ej: 12548" oninput="actualizarResumenBoleta()">
+        </div>
+        <div class="fgrp">
+          <label>Fecha *</label>
+          <input type="date" id="bol-fecha" oninput="actualizarResumenBoleta()">
+        </div>
+        <div class="fgrp" style="grid-column:1/-1;">
+          <label>Qui&#233;n carga</label>
+          <input type="text" id="bol-quien" placeholder="Opcional" oninput="actualizarResumenBoleta()">
+        </div>
+      </div>
+      <div class="boacc">
+        <button class="btn btn-na" onclick="avanzarBoletaPaso1()">Avanzar</button>
+      </div>
+    </div>
+
+    <div class="bostep" id="bostep-2">
+      <div class="bostephead">
+        <div>
+          <div class="bosteptit">Paso 2. Respaldo de la boleta</div>
+          <div class="bostepsub">Ten&#233;s que adjuntar una foto o cargar el monto total para poder seguir.</div>
+        </div>
+      </div>
+      <div class="bores" id="bol-resumen"></div>
+      <div class="fgrid">
+        <div class="fgrp">
+          <label>Monto total</label>
+          <input type="number" id="bol-monto" min="0" step="0.01" placeholder="0.00" oninput="actualizarResumenBoleta()">
+        </div>
+        <div class="fgrp">
+          <label>Foto de boleta</label>
+          <div class="dropz" id="dz-bol-file" onclick="document.getElementById('bol-file').click()" ondragover="dzOver(event,'dz-bol-file')" ondragleave="dzLeave('dz-bol-file')" ondrop="dzDrop(event,'dz-bol-file',manejarAdjuntoBoleta)">
+            <div class="dropico">&#128247;</div>
+            <div class="droptxt">Adjuntar foto desde el equipo</div>
+            <div class="dropsub">JPG, PNG, WEBP o PDF</div>
+          </div>
+          <input type="file" id="bol-file" accept="image/*,.pdf" style="display:none" onchange="manejarAdjuntoBoleta(this.files[0])">
+          <div class="bofile" id="bol-file-nombre">Todav&#237;a no hay archivo adjunto.</div>
+        </div>
+      </div>
+      <div class="boacc">
+        <button class="btn btn-ol" onclick="volverBoletaPaso(1)">Volver</button>
+        <button class="btn btn-na" onclick="avanzarBoletaPaso2()">Avanzar</button>
+      </div>
+    </div>
+
+    <div class="bostep" id="bostep-3">
+      <div class="bostephead">
+        <div>
+          <div class="bosteptit" id="bol-paso3-titulo">Paso 3. Agregar productos</div>
+          <div class="bostepsub" id="bol-paso3-sub">Carg&#225; los productos de esta boleta y confirm&#225; el movimiento final.</div>
+        </div>
+      </div>
+      <div class="bores" id="bol-resumen-final"></div>
+      <div class="fgrid">
+        <div class="fgrp">
+          <label>Buscar producto</label>
+          <input type="text" id="bol-bus" placeholder="Escrib&#237; para filtrar..." oninput="filtrarSel(this.value,'bol-sel')">
+        </div>
+        <div class="fgrp">
+          <label>Producto</label>
+          <select id="bol-sel" onchange="actuPrev('bol')"></select>
+        </div>
+        <div class="fgrp" style="grid-column:1/-1;">
+          <label>Vista previa</label>
+          <div class="prevsel" id="bol-prev">Ning&#250;n producto seleccionado</div>
+        </div>
+        <div class="fgrp">
+          <label>Cantidad *</label>
+          <input type="number" id="bol-qty" min="1" placeholder="0" class="inp-na" onkeydown="if(event.key==='Enter')agregarLineaBoleta()">
+        </div>
+        <div class="fgrp">
+          <label>Detalle del producto</label>
+          <input type="text" id="bol-item-obs" placeholder="Opcional" onkeydown="if(event.key==='Enter')agregarLineaBoleta()">
+        </div>
+      </div>
+      <div class="boacc">
+        <button class="btn btn-k" onclick="agregarLineaBoleta()">Agregar producto</button>
+      </div>
+      <div class="bolist" id="bol-lista"></div>
+      <div class="boacc">
+        <button class="btn btn-ol" onclick="volverBoletaPaso(2)">Volver</button>
+        <button class="btn btn-na" id="bol-confirmar" onclick="confirmarBoleta()">Confirmar boleta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ENTRADAS ═══ -->
+<div class="sec" id="sec-entrada">
+  <div class="panel">
+    <div class="ptit"><div class="punto pv"></div>Registrar Entrada</div>
+    <div class="fgrid">
+      <div class="fgrp">
+        <label>Buscar producto</label>
+        <input type="text" id="ent-bus" placeholder="Escrib&#237; para filtrar..." oninput="filtrarSel(this.value,'ent-sel')">
+      </div>
+      <div class="fgrp">
+        <label>Producto</label>
+        <select id="ent-sel" onchange="actuPrev('ent')"></select>
+      </div>
+      <div class="fgrp" style="grid-column:1/-1;">
+        <label>Vista previa</label>
+        <div class="prevsel" id="ent-prev">Ning&#250;n producto seleccionado</div>
+      </div>
+      <div class="fgrp">
+        <label>Cantidad *</label>
+        <input type="number" id="ent-qty" min="1" placeholder="0" class="inp-na" onkeydown="if(event.key==='Enter')regEntrada()">
+      </div>
+      <div class="fgrp">
+        <label>Fecha</label>
+        <input type="date" id="ent-fecha">
+      </div>
+      <div class="fgrp" style="grid-column:1/-1;">
+        <label>Observaci&#243;n (remito, proveedor...)</label>
+        <input type="text" id="ent-obs" placeholder="Opcional">
+      </div>
+    </div>
+    <button class="btn btn-v bfull" onclick="regEntrada()">&#10003; Confirmar Entrada</button>
+  </div>
+</div>
+
+<!-- ═══ SALIDAS ═══ -->
+<div class="sec" id="sec-salida">
+  <div class="panel">
+    <div class="ptit"><div class="punto pr"></div>Registrar Salida / Venta</div>
+    <div class="fgrid">
+      <div class="fgrp">
+        <label>Buscar producto</label>
+        <input type="text" id="sal-bus" placeholder="Escrib&#237; para filtrar..." oninput="filtrarSel(this.value,'sal-sel')">
+      </div>
+      <div class="fgrp">
+        <label>Producto</label>
+        <select id="sal-sel" onchange="actuPrev('sal')"></select>
+      </div>
+      <div class="fgrp" style="grid-column:1/-1;">
+        <label>Vista previa</label>
+        <div class="prevsel" id="sal-prev">Ning&#250;n producto seleccionado</div>
+      </div>
+      <div class="fgrp">
+        <label>Cantidad *</label>
+        <input type="number" id="sal-qty" min="1" placeholder="0" class="inp-na" onkeydown="if(event.key==='Enter')regSalida()">
+      </div>
+      <div class="fgrp">
+        <label>Fecha</label>
+        <input type="date" id="sal-fecha">
+      </div>
+      <div class="fgrp">
+        <label>Cliente (opcional)</label>
+        <input type="text" id="sal-cli" placeholder="Nombre del cliente...">
+      </div>
+      <div class="fgrp">
+        <label>N&#176; Remito / Nota</label>
+        <input type="text" id="sal-obs" placeholder="Opcional">
+      </div>
+    </div>
+    <button class="btn btn-r bfull" onclick="regSalida()">&#8722; Confirmar Salida</button>
+  </div>
+</div>
+
+<!-- ═══ HISTORIAL ═══ -->
+<div class="sec" id="sec-historial">
+  <div class="panel">
+    <div class="histtop">
+      <div>
+        <div class="ptit"><div class="punto pna"></div>Historial de Movimientos</div>
+        <div class="histsub">Revisa el mes completo, filtra movimientos al instante y guarda cierres mensuales para mantener un resumen consolidado de cada periodo.</div>
+      </div>
+      <div class="badge bga" id="hist-periodo-badge">Periodo actual</div>
+    </div>
+    <div class="histfilters">
+      <div class="swrap">
+        <span class="sico">&#128269;</span>
+        <input type="text" placeholder="Buscar por articulo, codigo, nota o boleta..." id="hist-bus" oninput="filtrarHist(this.value)">
+      </div>
+      <input type="month" id="hist-mes" onchange="setHistMes(this.value)">
+      <select id="hist-tipo" onchange="setHistTipo(this.value)">
+        <option value="todos">Todos</option>
+        <option value="entrada">Entradas</option>
+        <option value="salida">Salidas</option>
+      </select>
+      <button class="btn btn-na" onclick="cerrarMesHistorial()">Cerrar mes</button>
+      <button class="btn btn-ol" onclick="borrarHist()">&#128465; Borrar historial</button>
+    </div>
+    <div class="histstats">
+      <div class="histstat">
+        <div class="histstatlbl">Movimientos filtrados</div>
+        <div class="histstatval" id="hist-stat-movs">0</div>
+        <div class="histstatmeta" id="hist-stat-movs-meta">Sin datos para el filtro actual.</div>
+      </div>
+      <div class="histstat">
+        <div class="histstatlbl">Entradas</div>
+        <div class="histstatval in" id="hist-stat-in">0</div>
+        <div class="histstatmeta" id="hist-stat-in-meta">0 unidades ingresadas</div>
+      </div>
+      <div class="histstat">
+        <div class="histstatlbl">Salidas</div>
+        <div class="histstatval out" id="hist-stat-out">0</div>
+        <div class="histstatmeta" id="hist-stat-out-meta">0 unidades descontadas</div>
+      </div>
+      <div class="histstat">
+        <div class="histstatlbl">Balance</div>
+        <div class="histstatval balance" id="hist-stat-balance">0</div>
+        <div class="histstatmeta" id="hist-stat-balance-meta">Diferencia entre entradas y salidas</div>
+      </div>
+      <div class="histstat">
+        <div class="histstatlbl">Productos tocados</div>
+        <div class="histstatval" id="hist-stat-prods">0</div>
+        <div class="histstatmeta" id="hist-stat-boletas-meta">0 boletas detectadas</div>
+      </div>
+    </div>
+    <div class="histlayout">
+      <div class="histfeed">
+        <div class="histfeedhead">
+          <div>
+            <div class="histfeedtit">Detalle del periodo</div>
+            <div class="histfeedsub" id="hist-feed-sub">Movimientos ordenados del mas reciente al mas antiguo.</div>
+          </div>
+          <div class="badge" id="hist-feed-badge">0 registros</div>
+        </div>
+        <div class="histlist" id="hist-lista"></div>
+      </div>
+      <div class="mespanel">
+        <div class="meshead">
+          <div>
+            <div class="mestit" id="mes-titulo">Resumen mensual</div>
+            <div class="messub" id="mes-sub">Preparado para guardar un cierre del mes.</div>
+          </div>
+          <div class="badge bge" id="mes-cierre-estado">Sin cierre</div>
+        </div>
+        <div class="mesresume">
+          <div class="mescard">
+            <div class="mescardlbl">Movimientos del mes</div>
+            <div class="mescardval" id="mes-stat-movs">0</div>
+          </div>
+          <div class="mescard">
+            <div class="mescardlbl">Balance de unidades</div>
+            <div class="mescardval balance" id="mes-stat-balance">0</div>
+          </div>
+          <div class="mescard">
+            <div class="mescardlbl">Boletas</div>
+            <div class="mescardval" id="mes-stat-boletas">0</div>
+          </div>
+          <div class="mescard">
+            <div class="mescardlbl">Monto detectado</div>
+            <div class="mescardval" id="mes-stat-monto">$ 0,00</div>
+          </div>
+          <div class="mescard">
+            <div class="mescardlbl">Productos con stock</div>
+            <div class="mescardval in" id="mes-stat-stock">0</div>
+          </div>
+          <div class="mescard">
+            <div class="mescardlbl">Alertas activas</div>
+            <div class="mescardval out" id="mes-stat-alertas">0</div>
+          </div>
+        </div>
+        <div class="mescta">
+          <button class="btn btn-na" onclick="cerrarMesHistorial()">Guardar cierre del mes</button>
+          <button class="btn btn-ol" onclick="setHistMes(hoy().slice(0,7))">Ir al mes actual</button>
+        </div>
+        <div class="histfeedhead" style="margin-bottom:10px;">
+          <div>
+            <div class="histfeedtit">Cierres guardados</div>
+            <div class="histfeedsub">Cada cierre mantiene el resumen del periodo aunque despues sigan entrando movimientos.</div>
+          </div>
+        </div>
+        <div class="cierreslist" id="cierres-lista"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ALERTAS ═══ -->
+<div class="sec" id="sec-alertas">
+  <div class="panel">
+    <div class="ptit"><div class="punto pr"></div>Alertas de Stock M&#237;nimo</div>
+    <p style="font-size:13px;color:var(--G);margin-bottom:16px;">Solo muestra productos con stock m&#237;nimo configurado que est&#225;n en alerta. Config&#250;ralo en la columna <strong>M&#237;n.</strong> de la tabla de stock.</p>
+    <div id="aler-lista"></div>
+  </div>
+</div>
+
+<!-- ═══ PRODUCTOS (EDITOR) ═══ -->
+<div class="sec" id="sec-productos">
+  <div class="panel catshell">
+    <div class="ptit"><div class="punto pna"></div>Cat&#225;logo de Productos</div>
+    <div class="catmode" id="cat-modo">&#128065; Est&#225;s en modo consulta. Pod&#233;s revisar nombres, categor&#237;as y sin&#243;nimos, pero solo Editor puede modificar.</div>
+
+    <div class="catsubnav">
+      <button class="catsub" id="catsub-nuevo" onclick="switchCatalogoTab('nuevo')">&#43; Nuevo producto</button>
+      <button class="catsub on" id="catsub-nombres" onclick="switchCatalogoTab('nombres')">&#9998; Nombres</button>
+      <button class="catsub" id="catsub-auditoria" onclick="switchCatalogoTab('auditoria')">&#128221; Auditor&#237;a</button>
+    </div>
+
+    <div class="catview" id="catview-nuevo">
+      <div class="catcall"><strong>Nuevo producto</strong> &mdash; Carg&#225; la ficha b&#225;sica del art&#237;culo para que quede disponible en stock, boletas y exportaci&#243;n de Excel.</div>
+      <div class="catgrid">
+        <div class="fgrp">
+          <label>Nombre del producto</label>
+          <input type="text" id="cp-nombre" placeholder="Ej: CEMENTO HOLCIM X25KG">
+        </div>
+        <div class="fgrp">
+          <label>Categor&#237;a</label>
+          <input type="text" id="cp-categoria" placeholder="Ej: Morteros y Adhesivos">
+        </div>
+        <div class="fgrp">
+          <label>Unidad</label>
+          <input type="text" id="cp-unidad" placeholder="Ej: bolsa">
+        </div>
+        <div class="fgrp">
+          <label>Sin&#243;nimos</label>
+          <input type="text" id="cp-sinonimos" placeholder="Separ&#225; por coma o salto de l&#237;nea">
+        </div>
+        <div class="fgrp">
+          <label>Stock inicial</label>
+          <input type="number" id="cp-stock" min="0" value="0">
+        </div>
+        <div class="fgrp">
+          <label>Stock m&#237;nimo</label>
+          <input type="number" id="cp-min" min="0" value="0">
+        </div>
+      </div>
+      <button class="btn btn-na bfull" onclick="agregarProducto()">Crear producto</button>
+    </div>
+
+    <div class="catview show" id="catview-nombres">
+      <div class="catcall"><strong>Nombres y sin&#243;nimos</strong> &mdash; Toc&#225; &#9998; para editar el nombre visible, agregar c&#243;mo lo escribe el proveedor, o corregir categor&#237;a y unidad.</div>
+      <div class="catfilters">
+        <div class="swrap" style="margin:0;">
+          <span class="sico">&#128269;</span>
+          <input type="text" placeholder="Buscar producto..." id="prod-bus" oninput="filtrarProds(this.value)">
+        </div>
+        <select id="cat-filtro" onchange="filtrarCatalogoCategoria(this.value)"></select>
+      </div>
+      <div class="catmeta">
+        <div class="catcount" id="cat-resumen">0 productos</div>
+        <div id="cat-resumen-syn">0 sin&#243;nimos</div>
+      </div>
+      <div id="prods-lista" class="catlist"></div>
+    </div>
+
+    <div class="catview" id="catview-auditoria">
+      <div class="catcall"><strong>Auditor&#237;a</strong> &mdash; Ac&#225; quedan registrados los cambios de nombre, sin&#243;nimos, categor&#237;as y altas nuevas del cat&#225;logo.</div>
+      <div id="cat-audit" class="auditlist"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- ═══ MODAL: Importar Excel ═══ -->
+<div class="ov" id="ov-import">
+  <div class="modal">
+    <div class="modtit">&#8593; Importar Excel <button class="modx" onclick="cerrarImport()">&#215;</button></div>
+    <p style="font-size:13px;color:var(--G);margin-bottom:16px;line-height:1.6;">Import&#225; el archivo Excel del corral&#243;n para actualizar el stock inicial.</p>
+    <div class="dropz" id="dz-import" onclick="document.getElementById('file-import').click()" ondragover="dzOver(event,'dz-import')" ondragleave="dzLeave('dz-import')" ondrop="dzDrop(event,'dz-import',manejarExcel)">
+      <div class="dropico">&#128196;</div>
+      <div class="droptxt">Arrastr&#225; o clic para cargar</div>
+      <div class="dropsub">.xlsx &middot; .xls</div>
+    </div>
+    <input type="file" id="file-import" accept=".xlsx,.xls" style="display:none" onchange="manejarExcel(this.files[0])">
+    <div class="modacc"><button class="btn btn-ol" onclick="cerrarImport()">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Nuevo Producto ═══ -->
+<div class="ov" id="ov-nprod">
+  <div class="modal">
+    <div class="modtit">&#43; Nuevo Producto <button class="modx" onclick="cerrarNuevoProd()">&#215;</button></div>
+    <div class="fgrp" style="margin-bottom:14px;">
+      <label>Nombre del producto</label>
+      <input type="text" id="np-nombre" placeholder="Ej: CEMENTO HOLCIM X25KG">
+    </div>
+    <div class="fgrid" style="margin-bottom:14px;">
+      <div class="fgrp">
+        <label>Stock inicial</label>
+        <input type="number" id="np-stock" min="0" value="0">
+      </div>
+      <div class="fgrp">
+        <label>Stock m&#237;nimo (alerta)</label>
+        <input type="number" id="np-min" min="0" value="0">
+      </div>
+    </div>
+    <div class="modacc">
+      <button class="btn btn-ol" onclick="cerrarNuevoProd()">Cancelar</button>
+      <button class="btn btn-na" onclick="agregarProducto()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="ov-cat-edit">
+  <div class="modal">
+    <div class="modtit">&#9998; Editar producto <button class="modx" onclick="cerrarCatalogoProd()">&#215;</button></div>
+    <div class="fgrp" style="margin-bottom:14px;">
+      <label>C&#243;digo</label>
+      <input type="text" id="ce-codigo" disabled>
+    </div>
+    <div class="fgrp" style="margin-bottom:14px;">
+      <label>Nombre visible</label>
+      <input type="text" id="ce-nombre" placeholder="Nombre del producto">
+    </div>
+    <div class="catgrid">
+      <div class="fgrp">
+        <label>Categor&#237;a</label>
+        <input type="text" id="ce-categoria" placeholder="Categor&#237;a">
+      </div>
+      <div class="fgrp">
+        <label>Unidad</label>
+        <input type="text" id="ce-unidad" placeholder="Unidad">
+      </div>
+    </div>
+    <div class="fgrp" style="margin-top:14px;">
+      <label>Sin&#243;nimos</label>
+      <textarea id="ce-sinonimos" rows="5" placeholder="Un sin&#243;nimo por l&#237;nea o separados por coma"></textarea>
+    </div>
+    <div class="modacc">
+      <button class="btn btn-ol" onclick="cerrarCatalogoProd()">Cancelar</button>
+      <button class="btn btn-na" onclick="guardarCatalogoProd()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════
+const PIN = '1011';
+const KS  = 'nicola_stock_v4';
+const KM  = 'nicola_movs_v4';
+const KP  = 'nicola_prods_v4';
+const KMN = 'nicola_mins_v4';
+const KA  = 'nicola_catalog_audit_v1';
+const KC  = 'nicola_cierres_v1';
+
+function normTxt(v){
+  return String(v||'').trim().replace(/\s+/g,' ').toUpperCase();
+}
+
+function parseSinonimos(valor, nombreBase=''){
+  const base=normTxt(nombreBase);
+  const items=Array.isArray(valor)?valor:String(valor||'').split(/[\n,;]+/);
+  const unicos=new Set();
+  return items
+    .map(s=>normTxt(s))
+    .filter(s=>s&&s!==base&&!unicos.has(s)&&(unicos.add(s),true));
+}
+
+function inferirCategoria(nombre){
+  const n=normTxt(nombre);
+  const reglas=[
+    ['Morteros y Adhesivos',['CEMENTO','REVOQUE','FINO','PEGAMENTO','PASTINA','CAL ','CERESITA','PLANITOP','TACURU','MAPEI','WEBER']],
+    ['Hierros y Mallas',['MALLA','HIERRO','ESTRIBO','ALAMBRE','ALAMBRON','CLAVO','CLAVOS','METAL DESPLEGABLE']],
+    ['Ladrillos y Bloques',['LADRILLO','BLOCK','BOVEDILLA','TABIQUE','PORTANTE','LOSA PALMAR','ENCADENADO']],
+    ['Premoldeados',['VIGUETA','POSTE','PILAR','LOSETA','MARCO','TAPA','GARGOLA','BASE DE TANQUE']],
+    ['Tanques e Impermeabilizacion',['TANQUE','MEMBRANA','PINTURA ASFALTICA','MEGAFLEX']],
+    ['Pinturas y Quimicos',['LATEX','SIKA','HIDROFUGO']],
+    ['Herramientas',['HORMIGONERA','CARRETILLA','CARRITO']],
+    ['Sanitaria y PVC',['PVC','AWADUCT','FUSION','FUSIOGAS','CAÑO','CA?O','PILETA DE PATIO','PORTA REJILLA','BOCA DE ACCESO']],
+    ['Aridos',['ARENA','GRANZA','BOLSON','BIG BAG']],
+    ['Telgopor',['TELGOPOR','PLACA TELGOPOR','BLS TELGOPOR']]
+  ];
+  const match=reglas.find(([,keys])=>keys.some(k=>n.includes(k)));
+  return match?match[0]:'General';
+}
+
+function inferirUnidad(nombre){
+  const n=normTxt(nombre);
+  if(/X ?\d+([.,]\d+)? ?KG|\bKG\b/.test(n)) return 'bolsa';
+  if(/X ?\d+([.,]\d+)? ?L|\bLTS\b|\bLT\b/.test(n)) return 'balde';
+  if(/\bMTS\b|\bX MT\b|\bMT\b/.test(n)) return 'metro';
+  if(/\bXKG\b/.test(n)) return 'kg';
+  return 'unidad';
+}
+
+function normalizarProd(prod){
+  return {
+    c:Number(prod.c),
+    n:normTxt(prod.n||'PRODUCTO'),
+    cat:String(prod.cat||inferirCategoria(prod.n||'')).trim()||'General',
+    u:String(prod.u||inferirUnidad(prod.n||'')).trim()||'unidad',
+    syn:parseSinonimos(prod.syn||[],prod.n||'')
+  };
+}
+
+function formatCod(cod){
+  return `C${String(cod).padStart(4,'0')}`;
+}
+
+// ═══════════════════════════════════
+// PRODUCTOS BASE
+// ═══════════════════════════════════
+const PBASE=[
+{c:1,n:"CEMENTO HOLCIM X25KG"},{c:2,n:"HERCAL ALBAÑILERIA (MAESTRO X25KG)"},
+{c:3,n:"PLANITOP FINO INT EXT MAPEI X 20KG"},{c:4,n:"REVOQUE FINO HOLCIM INT X 25KG"},
+{c:5,n:"FINO EXTERIOR WEBER FORTE X 25 KG"},{c:6,n:"FINO INTERIOR X 25KG WEBER"},
+{c:7,n:"PEGAMENTO WEBER STANDAR CERAMICO X 25KG"},{c:8,n:"PEGAMENTO IMPERMEABLE MAPEI MAPESET X 25"},
+{c:9,n:"PEGAMENTO PERFECTO CERAMICO IMPERMEABLE X 25KG"},{c:10,n:"PEGAMENTO KERAFLEX X 25KG"},
+{c:11,n:"PEGAMENTO MAPEI P9 PORCELLANATO"},{c:12,n:"PEGAMENTO MAPEI KERAFLOR PLUS GRIS X 25KG"},
+{c:13,n:"PEGAMENTO KERABOND PLUS PORCELLANATO"},{c:14,n:"CAL VIVA ANDINA FGH"},
+{c:15,n:"CAL VIVA PASALE CAL"},{c:16,n:"CAL HIDRATADA ANDINA FGH"},
+{c:17,n:"CAL HIDRATADA ANDINA FGH (2)"},{c:18,n:"MALLA 15*25*4"},
+{c:19,n:"MALLA 15*25 5,5 (2X3)"},{c:20,n:"MALLA 5,5 15X15 (3X2)"},
+{c:21,n:"VIGUETA PRETENSADA 1,00"},{c:22,n:"VIGUETA PRETENSADA 1,20"},
+{c:23,n:"VIGUETA PRETENSADA 1,40"},{c:24,n:"VIGUETA PRETENSADA 1,60"},
+{c:25,n:"VIGUETA PRETENSADA 1,80"},{c:26,n:"VIGUETA PRETENSADA 2,00"},
+{c:27,n:"VIGUETA PRETENSADA 2,20"},{c:28,n:"VIGUETA PRETENSADA 2,40"},
+{c:29,n:"VIGUETA PRETENSADA 2,60"},{c:30,n:"VIGUETA PRETENSADA 2,80"},
+{c:31,n:"VIGUETA PRETENSADA 3,00"},{c:32,n:"VIGUETA PRETENSADA 3,20"},
+{c:33,n:"VIGUETA PRETENSADA 3,40"},{c:34,n:"VIGUETA PRETENSADA 3,60"},
+{c:35,n:"VIGUETA PRETENSADA 3,80"},{c:36,n:"VIGUETA PRETENSADA 4,00"},
+{c:37,n:"VIGUETA PRETENSADA 4,20"},{c:38,n:"VIGUETA PRETENSADA 4,40"},
+{c:39,n:"VIGUETA PRETENSADA 4,60"},{c:40,n:"VIGUETA PRETENSADA 4,80"},
+{c:41,n:"VIGUETA PRETENSADA 5,00"},{c:42,n:"VIGUETA PRETENSADA 5,20"},
+{c:43,n:"VIGUETA PRETENSADA 5,40"},{c:44,n:"VIGUETA PRETENSADA 5,60"},
+{c:45,n:"VIGUETA PRETENSADA 5,80"},{c:46,n:"VIGUETA PRETENSADA 6,00"},
+{c:47,n:"VIGUETA PRETENSADA 6,20"},{c:48,n:"VIGUETA PRETENSADA 6,40"},
+{c:49,n:"VIGUETA PRETENSADA 6,60"},{c:50,n:"VIGUETA PRETENSADA 6,80"},
+{c:51,n:"VIGUETA PRETENSADA 7,00"},{c:52,n:"VIGUETA PRETENSADA 7,20"},
+{c:53,n:"VIGUETA PRETENSADA 7,40"},{c:54,n:"LADRILLO COMUN"},
+{c:55,n:"LADRILLO SEMI VISTO"},{c:56,n:"LADRILLO VISTO"},
+{c:57,n:"BLOCK P10 COMUN"},{c:58,n:"ENCADENADO 20*20*40"},
+{c:59,n:"BLOCK DE 20 S/PIEDRA"},{c:60,n:"BLOCK DE 13 S/PIEDRA"},
+{c:61,n:"MEDIO FRENTE DEBIL 20*20*20"},{c:62,n:"ENCADENADO SIMIL PIEDRA 20*20*40"},
+{c:63,n:"MEDIO SIMIL PIEDRA 20*20*20"},{c:64,n:"MEDIO FRENTE DEBIL 13*20*20"},
+{c:65,n:"ADOQUIN HOLANDA 8CM ALTO TRANSITO 50 X MT"},{c:66,n:"LOSETA CRIBADA 60X40"},
+{c:67,n:"LOSETA CRIBADA 40X40"},{c:68,n:"LOSETA LADRILLO COMUN"},
+{c:69,n:"PILAR PREMOLDEADO DE LUZ MONO (CELLOTTI)"},{c:70,n:"PILAR PREMOLDEADO TRIFASICO (CELLOTTI)"},
+{c:71,n:"PILAR MONO P/UN PUNTO DE MEDICION CHICO"},{c:72,n:"POSTE RECTO 2,40"},
+{c:73,n:"POSTE RECTO ESQUINERO 2.55*16*15"},{c:74,n:"CUÑA O PUNTAL GDE 210X8X7"},
+{c:75,n:"POSTE OLIMPICO ESQUINERO 3*13*18"},{c:76,n:"POSTE OLIMPICO PASANTE 3*11*11"},
+{c:77,n:"GARGOLA GRANDE PARA DESAGUE"},{c:78,n:"LOSETA 40X40 HORMIGON"},
+{c:79,n:"LOSETA 50X50 HORMIGON"},{c:80,n:"LOSETA 40X60 HORMIGON"},
+{c:81,n:"LOSETA PORFIDOS 40 X40"},{c:82,n:"MARCO P/TAPA 60*60"},
+{c:83,n:"MARCO P/TAPA 40*40"},{c:84,n:"MARCO P/TAPA 30*30"},
+{c:85,n:"MARCO P/TAPA 20*20"},{c:86,n:"TAPA LISA C/MARCO 60X60"},
+{c:87,n:"TAPA LISA C/MARCO 40X40"},{c:88,n:"TAPA LISA C/MARCO 30X30"},
+{c:89,n:"TAPA LISA C/MARCO 20X20"},{c:90,n:"TAPA LISA S/MARCO 20X20"},
+{c:91,n:"TAPA LISA S/MARCO 30X30"},{c:92,n:"TAPA LISA S/MARCO 40X40"},
+{c:93,n:"TAPA LISA S/MARCO 60X60"},{c:94,n:"TAPA C/MARCO Y FILETE 20X20"},
+{c:95,n:"TAPA C/MARCO Y FILETE 30X30"},{c:96,n:"TAPA C/MARCO Y FILETE 40X40"},
+{c:97,n:"TAPA C/MARCO Y FILETE 60X60"},{c:98,n:"TAPA C/FILETE S/MARCO 20X20"},
+{c:99,n:"TAPA C/FILETE S/MARCO 30X30"},{c:100,n:"TAPA C/FILETE S/MARCO 40X40"},
+{c:101,n:"TAPA C/FILETE S/MARCO 60X60"},{c:102,n:"TANQUE 500LTS BICAPA IMPACTO PRECONS"},
+{c:103,n:"TANQUE 500LTS TRICAPA IMPACTO PRECONS"},{c:104,n:"TANQUE 550 LTS BICAPA IMPACTO - PRECONS"},
+{c:105,n:"TANQUE 550 LTS TRICAPA IMPACTO PRECONS"},{c:106,n:"TANQUE 800 LTS BICAPA IMPACTO PRECONS"},
+{c:107,n:"TANQUE 800 LTS TRICAPA IMPACTO PRECONS"},{c:108,n:"TANQUE 1000LTS BICAPA IMPACTO PRECONS"},
+{c:109,n:"TANQUE 1000LTS TRICAPA IMPACTO PRECONS"},{c:110,n:"TANQUE 1100 LTS BICAPA IMPACTO PRECONS"},
+{c:111,n:"TANQUE 1100 LTS TRICAPA IMPACTO PRECONS"},{c:112,n:"PINTURA ASFALTICA MEGATON X 18 LTS"},
+{c:113,n:"PINTURA ASFALTICA X 10 LTS MEGATON"},{c:114,n:"PINTURA ASFALTICA MEGATON X4LTS"},
+{c:115,n:"PINTURA ASFALTICA X 1LT MEGATON"},{c:116,n:"LATEX INTERIOR/EXTERIOR X 20 LTS IRELAND"},
+{c:117,n:"LATEX INTERIOR/EXTERIOR X 10 LTS IRELAND"},{c:118,n:"LATEX INTERIOR/EXTERIOR X 4 LTS IRELAND"},
+{c:119,n:"CERESITA WEBER X 20 KG (HIDROFUGO)"},{c:120,n:"CERESITA WEBER 10KG (HIDROFUGO)"},
+{c:121,n:"CERESITA WEBER 10KG (HIDROFUGO) (2)"},{c:122,n:"CERESITA WEBER 1 KG (HIDROFUGO)"},
+{c:123,n:"MEMBRANA LIQUIDA FIBRADA MEGAFLEX X 20LTS"},{c:124,n:"MEMBRANA LIQUIDA X 10 LTS MEGAFLEX"},
+{c:125,n:"MEMBRANA LIQUIDA X 4LTS MEGAFLEX"},{c:126,n:"MEMBRANA LIQUIDA X 1LT MEGAFLEX"},
+{c:127,n:"TACURU 20 KG"},{c:128,n:"TACURU 10 KG"},
+{c:129,n:"TACURU 4 KG"},{c:130,n:"TACURU 1 KG"},
+{c:131,n:"HORMIGONERA REFORZ 3/4 HP RUEDA CAUCHO"},{c:132,n:"CARRETILLA CAJON LIVIANA"},
+{c:133,n:"CARRETILLA ESTAMPADA"},{c:134,n:"ALAMBRÓN DEL 9 X KG"},
+{c:135,n:"ALAMBRE GALVANIZ N14 X KG 44XMT"},{c:136,n:"ALAMBRE X KG"},
+{c:137,n:"CLAVOS DE 2/1/2 PUNTA PARIS XKG"},{c:138,n:"CLAVO PUNTA PARIS 2''"},
+{c:139,n:"PASTINA PERFECTO X 1KG GRIS PLOMO"},{c:140,n:"PASTINA PERFECTO X 1KG MAIZ"},
+{c:141,n:"PASTINA PERFECTO X 1KG ROSADO"},{c:142,n:"PASTINA PERFECTO X 1KG LIMA"},
+{c:143,n:"PASTINA PERFECTO X 1KG MARFIL"},{c:144,n:"PASTINA PERFECTO X 1KG TIZA"},
+{c:145,n:"PASTINA PERFECTO X 1KG NEGRO"},{c:146,n:"PASTINA PERFECTO X 1KG GRIS CLARO"},
+{c:147,n:"PASTINA PERFECTO X 1KG CHOCOLATE"},{c:148,n:"PASTINA PERFECTO X 1KG COBRIZO"},
+{c:149,n:"PASTINA MAPEI X KG MARRON"},{c:150,n:"PASTINA MAPEI X KG GRIS MEDIO"},
+{c:151,n:"PASTINA MAPEI X KG FANGO"},{c:152,n:"PASTINA MAPEI X KG GRIS CEMENTO"},
+{c:153,n:"PASTINA MAPEI X KG CARAMELO"},{c:154,n:"PASTINA MAPEI X KG BEIGE"},
+{c:155,n:"PASTINA MAPEI X KG MANHATTAN"},{c:156,n:"ESTRIBO 10*10*4.2"},
+{c:157,n:"ESTRIBO 12X12*4.2"},{c:158,n:"ESTRIBO 15*10 4.2"},
+{c:159,n:"ESTRIBO 15*15 4.2"},{c:160,n:"ESTRIBO 20*20 4.2"},
+{c:161,n:"METAL DESPLEGABLE 1.80*.80"},{c:162,n:"ROLLO TEJIDO ROMBOIDAL 150-76-14 X 10MTS"},
+{c:163,n:"ROLLO TEJIDO ROMBOIDAL 180-76-14"},{c:164,n:"ROLLO TEJIDO ROMBOIDAL 200-76-14 1/2"},
+{c:165,n:"PLANCHUELA PARA ALAMBRADO"},{c:166,n:"MEMBRANA ROLLO C/ALUMINIO EMAPI 40KG"},
+{c:167,n:"MEMBRANA ROLLO C/ALUMINIO IMPERMUR 35KG"},{c:168,n:"MEMBRANA GEOTRANS X 40 KG"},
+{c:169,n:"PVC - TUBO 110 X 4MTS REFORZADO"},{c:170,n:"PVC - TUBO 63 X 4MTS REFORZADO"},
+{c:171,n:"PVC - TUBO 50 X 4MTS REFORZADO"},{c:172,n:"PVC - TUBO 40 X 4MTS REFORZADO"},
+{c:173,n:"AWADUCT - CAÑO CLOACAL 110 X 4MTS"},{c:174,n:"AWADUCT - CAÑO CLOACAL 63 X 4 MTS"},
+{c:175,n:"AWADUCT - CAÑO CLOACAL 50 X 4MTS"},{c:176,n:"AWADUCT - CAÑO CLOACAL 40 X 4MTS"},
+{c:177,n:"FUSION AGUA - CAÑO 32X4MTS PN20"},{c:178,n:"FUSION AGUA - CAÑO 25X4MTS PN20"},
+{c:179,n:"FUSION AGUA - CAÑO 20X4MTS PN20"},{c:180,n:"FUSIOGAS - TUBO FUSION 32 X 4 MTS"},
+{c:181,n:"FUSIOGAS - TUBO FUSION 25 X 4 MTS"},{c:182,n:"FUSIOGAS - TUBO FUSION 20 X 4 MTS"},
+{c:183,n:"CAÑO EPOXI 1 1/4 X 6,40 MT"},{c:184,n:"CAÑO EPOXI 1 1/2 X 6,40 MT"},
+{c:185,n:"BIG BAG"},{c:186,n:"ARENA GRUESA X MT EN BOLSON"},
+{c:187,n:"ARENA FINA X MT EN BOLSON"},{c:188,n:"GRANZA X MT EN BOLSON"},
+{c:189,n:"PORTANTE PALMAR 12*18*33 15 X MT"},{c:190,n:"PVC - RAMAL TEE MH 110 A 90"},
+{c:191,n:"PVC - RAMAL TEE M.H. 110 X 63"},{c:192,n:"PVC - RAMAL SIMPLE Y 110 A 63"},
+{c:193,n:"PVC - CURVA M.H 110 A 90"},{c:194,n:"PVC - CUPLA 110"},
+{c:195,n:"PVC - REDUCCION 110 A 63"},{c:196,n:"PVC - CODO M.H 110 A 90"},
+{c:197,n:"PVC - REDUCCION 110 A 63 (2)"},{c:198,n:"PVC - TAPA H 110"},
+{c:199,n:"PVC - SOMBRERETE 110"},{c:200,n:"CODO RAMAL PVC 110X63"},
+{c:201,n:"EMBUDO VERTICAL PVC 20X20"},{c:202,n:"PILETA DE PATIO PVC 10X10"},
+{c:203,n:"PILETA DE PATIO PVC 15X15"},{c:204,n:"RAMAL TEE PVC 63 M.H"},
+{c:205,n:"REDUCCION PVC 63X40"},{c:206,n:"REDUCCION PVC 63X50"},
+{c:207,n:"RAMAL Y PVC 63 M.H"},{c:208,n:"TAPON PVC 63 M"},
+{c:209,n:"TAPON PVC 63 H"},{c:210,n:"CUPLA PVC 63"},
+{c:211,n:"CODO PVC 63 A 90 M.H"},{c:212,n:"CODO PVC 63 A 45 M.H"},
+{c:213,n:"REDUCCION PVC 50X40"},{c:214,n:"RAMAL TEE PVC 50"},
+{c:215,n:"CUPLA PVC 50"},{c:216,n:"CODO PVC 50 A 90 M.H"},
+{c:217,n:"CURVA PVC 50 A 45 M.H"},{c:218,n:"REDUCCION PVC 63X40 (2)"},
+{c:219,n:"SIKA X 5LTS SACHET"},{c:220,n:"CURVA PVC 50 A 45 M.H (2)"},
+{c:221,n:"CODO PVC 40 A 90 M.H"},{c:222,n:"TEE PVC 40 A 90 H.H"},
+{c:223,n:"TEE PVC 40 A 90 M.H"},{c:224,n:"TAPA PVC H 50"},
+{c:225,n:"TAPA PVC M 50"},{c:226,n:"RAMAL TEE PVC 40 A 90 H.H"},
+{c:227,n:"RAMAL Y PVC 40"},{c:228,n:"CUPLA PVC 40"},
+{c:229,n:"TAPA H PVC 40"},{c:230,n:"RAMAL Y AWADUCT 110 M.H"},
+{c:231,n:"RAMAL Y AWADUCT 110 H.H"},{c:232,n:"RAMAL TEE AWADUCT 110 A 63 M.H"},
+{c:233,n:"RAMAL TEE AWADUCT 110 M.H"},{c:234,n:"RAMAL Y AWADUCT 110 A 63 M.H"},
+{c:235,n:"RAMAL TEE AWADUCT 110 A 50"},{c:236,n:"RAMAL Y AWADUCT 110 A 63 H.H"},
+{c:237,n:"CURVA AWADUCT 110 A 90 H.H"},{c:238,n:"CURVA AWADUCT 110 A 90 M.H"},
+{c:239,n:"CODO AWADUCT 110 A 90 M.H"},{c:240,n:"CODO AWADUCT 110 A 45 M.H"},
+{c:241,n:"CODO AWADUCT 110 A 90 H.H"},{c:242,n:"CUPLA AWADUCT 110"},
+{c:243,n:"TAPA AWADUCT 110"},{c:244,n:"REDUC. AWADUCT 110 A 63 M.H"},
+{c:245,n:"RECEPTACULO AWADUCT 110 A 40"},{c:246,n:"RECEPTACULO AWADUCT 110 A 63"},
+{c:247,n:"CUPLA AWADUCT EXCENTRICA 63"},{c:248,n:"P. DE PATIO AWADUCT 110X40 7B"},
+{c:249,n:"BOCA DE ACCESO AWADUCT 63 A 50"},{c:250,n:"PORTA REJILLA AWADUCT 12X12"},
+{c:251,n:"PORTA REJILLA AWADUCT 15X15"},{c:252,n:"RAMAL Y AWADUCT 63X45 M.H"},
+{c:253,n:"RAMAL TEE AWADUCT 63 M.H"},{c:254,n:"CUPLA AWADUCT 63"},
+{c:255,n:"CODO AWADUCT 63 A 90 H.H"},{c:256,n:"CODO AWADUCT 63 A 90 M.H"},
+{c:257,n:"CODO AWADUCT 63 A 45 M.H"},{c:258,n:"CODO AWADUCT 63 A 45 H.H"},
+{c:259,n:"REDUCCION AWADUCT 63X50"},{c:260,n:"REDUCCION AWADUCT 63X40"},
+{c:261,n:"TAPA H AWADUCT 63"},{c:262,n:"TAPA M AWADUCT 63"},
+{c:263,n:"TAPA M AWADUCT 50"},{c:264,n:"TAPA H AWADUCT 50"},
+{c:265,n:"REDUCCION AWADUCT 50X40"},{c:266,n:"RAMAL TEE AWADUCT 50 H.H"},
+{c:267,n:"RAMAL Y AWADUCT 50 H.H"},{c:268,n:"RAMAL TEE AWADUCT 50 M.H"},
+{c:269,n:"CUPLA AWADUCT 50"},{c:270,n:"CODO AWADUCT 50 A 90 M.H"},
+{c:271,n:"CODO AWADUCT 50 A 90 H.H"},{c:272,n:"CODO AWADUCT 50 A 45 M.H"},
+{c:273,n:"CODO AWADUCT 50 A 45 H.H"},{c:274,n:"CODO AWADUCT 40 A 45 H.H"},
+{c:275,n:"CODO AWADUCT 40 A 90 H.H"},{c:276,n:"CODO AWADUCT 40 A 45 M.H"},
+{c:277,n:"CODO AWADUCT 40 A 90 M.H"},{c:278,n:"CURVA AWADUCT 40 M.H"},
+{c:279,n:"CUPLA AWADUCT 40"},{c:280,n:"RAMAL Y AWADUCT 40"},
+{c:281,n:"RAMAL TEE AWADUCT 40"},{c:282,n:"ESTRUCTURA TAPA CAMARA"},
+{c:283,n:"BASE DE TANQUE 500LTS"},{c:284,n:"CODO PVC 40 A 45 M.H"},
+{c:285,n:"RAMAL TEE PVC 40 A 90 M.H (2)"},{c:286,n:"CUPLA AWADUCT 110 (2)"},
+{c:287,n:"LOSA PALMAR 11.5*25*42 8 X MT"},{c:288,n:"PORTANTE PALMAR 18*19*33 15 X MT"},
+{c:289,n:"LOSA PALMAR 16*25*38 8 XMT"},{c:290,n:"TABIQUE 18*18*33 PALMAR 15 X MT"},
+{c:291,n:"TABIQUE 12*18*33 PALMAR 15XMT"},{c:292,n:"TABIQUE 8*18*33 PALMAR 15 X MT"},
+{c:293,n:"BLOCK 13*20*40"},{c:294,n:"BLOCK DE 20*20*40"},
+{c:295,n:"BLOCK DE 13 OFERTA"},{c:296,n:"BLOCK DE 20 OFERTA"},
+{c:297,n:"HIERRO DE 4,2 MM"},{c:298,n:"HIERRO DE 6 MM (ACINDAR)"},
+{c:299,n:"HIERRO DE 8 MM (ACINDAR)"},{c:300,n:"HIERRO DE 10 MM (ACINDAR)"},
+{c:301,n:"HIERRO DE 12 MM (ACINDAR)"},{c:302,n:"HIERRO DE 16 MM (ACINDAR)"},
+{c:303,n:"GRANZA EN BOLSA"},{c:304,n:"ARENA GRUESA EN BOLSA CHICA"},
+{c:305,n:"ARENA FINA EN BOLSA"},{c:306,n:"LADRILLO COMUN (2)"},
+{c:307,n:"BOVEDILLA COMUN 28 X MTS"},{c:308,n:"LOSA 9.5 X19.5X38 BLOCK X"},
+{c:309,n:"LOSA 9.5 OFERTA"},{c:310,n:"BLS TELGOPOR GRANULADO 1/5 MT3"},
+{c:311,n:"LOSA TELGOPOR DE 10 CMS"},{c:312,n:"LOSA TELGOPOR DE 12 CMS"},
+{c:313,n:"LOSA TELGOPOR 14CMS"},{c:314,n:"LOSA TELGOPOR 16 CMS"},
+{c:315,n:"PLACA TELGOPOR 3CMS"},{c:316,n:"PLACA TELGOPOR 2CMS"},
+{c:317,n:"PLACA TELGOPOR 1CM"},{c:318,n:"P. PATIO 110X63X40 4B AWA"},
+{c:319,n:"CARRITO"},{c:320,n:"VIGUETA 7M"},
+{c:321,n:"TUBO 40X40 ESTRUC"},{c:322,n:"POSTE ESQ. RECTO"}
+];
+
+// ═══════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════
+let PRODS = PBASE.map(normalizarProd);
+let stock = {};
+let movs  = [];
+let mins  = {};
+let auditLog = [];
+let cierres = [];
+let rol   = null, selrol = null;
+let stFilt='todos', stBus='', histBus='', histMes=new Date().toISOString().slice(0,7), histTipo='todos', prodBus='', catFiltro='todas', catVista='nombres', catEditCod=null;
+let boletaTipo='', boletaArchivoNombre='';
+let boletaLineas=[], boletaPaso=1;
+let saveT=null, syncT=null;
+
+// ═══════════════════════════════════
+// PERSISTENCIA — localStorage (mismo navegador) + BroadcastChannel (multi-tab)
+// ═══════════════════════════════════
+let bc = null;
+try { bc = new BroadcastChannel('nicola_sync'); } catch(e){}
+
+function cargar() {
+  PRODS = PBASE.map(normalizarProd);
+  stock = {};
+  movs = [];
+  mins = {};
+  auditLog = [];
+  cierres = [];
+  PRODS.forEach(p=>{ stock[p.c]={inicial:0,entradas:0,salidas:0}; mins[p.c]=0; });
+  try {
+    const s=localStorage.getItem(KS); if(s) Object.assign(stock,JSON.parse(s));
+    const m=localStorage.getItem(KM); if(m) movs=JSON.parse(m);
+    const mn=localStorage.getItem(KMN); if(mn) Object.assign(mins,JSON.parse(mn));
+    const pr=localStorage.getItem(KP);
+    if(pr){
+      const guardados=JSON.parse(pr);
+      if(Array.isArray(guardados)){
+        guardados.forEach(raw=>{
+          const prod=normalizarProd(raw);
+          const actual=PRODS.find(x=>x.c===prod.c);
+          if(actual) Object.assign(actual,prod);
+          else PRODS.push(prod);
+        });
+      }
+    }
+    const au=localStorage.getItem(KA);
+    if(au){
+      const data=JSON.parse(au);
+      if(Array.isArray(data)) auditLog=data;
+    }
+    const ci=localStorage.getItem(KC);
+    if(ci){
+      const data=JSON.parse(ci);
+      if(Array.isArray(data)) cierres=data;
+    }
+  } catch(e){}
+  PRODS.sort((a,b)=>a.c-b.c);
+  PRODS.forEach(p=>{
+    if(!stock[p.c]) stock[p.c]={inicial:0,entradas:0,salidas:0};
+    if(typeof mins[p.c]==='undefined') mins[p.c]=0;
+  });
+}
+
+function guardar() {
+  const dot=document.getElementById('savedot'), txt=document.getElementById('savetxt');
+  if(dot){dot.classList.add('saving'); if(txt) txt.textContent='Guardando...';}
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{
+    try {
+      localStorage.setItem(KS,JSON.stringify(stock));
+      localStorage.setItem(KM,JSON.stringify(movs));
+      localStorage.setItem(KMN,JSON.stringify(mins));
+      localStorage.setItem(KP,JSON.stringify(PRODS));
+      localStorage.setItem(KA,JSON.stringify(auditLog.slice(-400)));
+      localStorage.setItem(KC,JSON.stringify(cierres));
+      if(dot){dot.classList.remove('saving'); if(txt) txt.textContent='Guardado \u2713';}
+      if(bc) bc.postMessage({type:'sync'});
+    } catch(e){ toast('Error al guardar','err'); }
+  },350);
+}
+
+// Sincronización entre pestañas del mismo navegador
+if(bc) bc.onmessage = e => {
+  if(e.data?.type==='sync'){
+    try{
+      const s=localStorage.getItem(KS); if(s) Object.assign(stock,JSON.parse(s));
+      const m=localStorage.getItem(KM); if(m) movs=JSON.parse(m);
+      const mn=localStorage.getItem(KMN); if(mn) Object.assign(mins,JSON.parse(mn));
+      const pr=localStorage.getItem(KP);
+      if(pr){
+        const guardados=JSON.parse(pr);
+        if(Array.isArray(guardados)){
+          const base=PBASE.map(normalizarProd);
+          guardados.forEach(raw=>{
+            const prod=normalizarProd(raw);
+            const actual=base.find(x=>x.c===prod.c);
+            if(actual) Object.assign(actual,prod);
+            else base.push(prod);
+          });
+          PRODS=base.sort((a,b)=>a.c-b.c);
+        }
+      }
+      const au=localStorage.getItem(KA);
+      if(au){
+        const data=JSON.parse(au);
+        if(Array.isArray(data)) auditLog=data;
+      }
+      const ci=localStorage.getItem(KC);
+      if(ci){
+        const data=JSON.parse(ci);
+        if(Array.isArray(data)) cierres=data;
+      }
+      renderTodo(); toast('Stock actualizado desde otra ventana','info');
+    }catch(e){}
+  }
+};
+
+// ═══════════════════════════════════
+// LOGIN / ROL
+// ═══════════════════════════════════
+function selRol(r){
+  selrol=r;
+  document.getElementById('rb-visor').classList.toggle('sel',r==='visor');
+  document.getElementById('rb-editor').classList.toggle('sel',r==='editor');
+  const pg=document.getElementById('pingrp');
+  pg.classList.toggle('show',r==='editor');
+  if(r==='editor') setTimeout(()=>document.getElementById('pinin').focus(),60);
+  document.getElementById('lerr').textContent='';
+}
+
+function doLogin(){
+  if(!selrol){document.getElementById('lerr').textContent='Seleccioná un acceso.';return;}
+  if(selrol==='editor'){
+    const pin=document.getElementById('pinin').value;
+    if(pin!==PIN){
+      const inp=document.getElementById('pinin');
+      inp.classList.add('err'); setTimeout(()=>inp.classList.remove('err'),400);
+      document.getElementById('lerr').textContent='Contraseña incorrecta.';
+      inp.value=''; return;
+    }
+  }
+  rol=selrol;
+  document.getElementById('login').classList.add('oculto');
+  document.getElementById('app').style.display='block';
+  cargar(); aplicarRol(); armarSelects(); renderTodo(); actuSub();
+  reiniciarBoleta();
+  document.getElementById('ent-fecha').value=hoy();
+  document.getElementById('sal-fecha').value=hoy();
+  document.getElementById('bol-fecha').value=hoy();
+}
+
+function salir(){
+  rol=selrol=null;
+  document.getElementById('login').classList.remove('oculto');
+  document.getElementById('app').style.display='none';
+  ['rb-visor','rb-editor'].forEach(id=>document.getElementById(id).classList.remove('sel'));
+  document.getElementById('pingrp').classList.remove('show');
+  document.getElementById('pinin').value='';
+  document.getElementById('lerr').textContent='';
+  reiniciarBoleta();
+  switchTab('stock');
+}
+
+function aplicarRol(){
+  const ed=rol==='editor';
+  document.getElementById('bv').classList.toggle('show',!ed);
+  document.getElementById('be').classList.toggle('show',ed);
+  document.getElementById('avis').classList.toggle('show',!ed);
+  document.getElementById('cat-modo').classList.toggle('show',!ed);
+  document.getElementById('th-edit').style.display=ed?'':'none';
+  document.getElementById('hbtn-boleta').style.display=ed?'':'none';
+  document.querySelectorAll('.se').forEach(el=>el.style.display=ed?'':'none');
+}
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+const TABS=['stock','boleta','entrada','salida','historial','alertas','productos'];
+const SOLO_ED=['boleta','entrada','salida','historial'];
+function switchTab(t){
+  if(SOLO_ED.includes(t)&&rol!=='editor') return;
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  TABS.forEach(id=>{ const s=document.getElementById('sec-'+id); if(s) s.classList.toggle('active',id===t); });
+  const te=document.getElementById('tab-'+t); if(te) te.classList.add('active');
+  if(t==='boleta') renderBoletaUI();
+  if(t==='alertas') renderAlertas();
+  if(t==='productos') renderProds();
+}
+
+// ═══════════════════════════════════
+// STOCK
+// ═══════════════════════════════════
+function getStk(cod){ const s=stock[cod]||{inicial:0,entradas:0,salidas:0}; return (s.inicial||0)+(s.entradas||0)-(s.salidas||0); }
+function getMin(cod){ return mins[cod]||0; }
+
+function filtrarStock(q){ stBus=q.toLowerCase(); renderStock(); }
+function cambFiltro(f,btn){
+  stFilt=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); renderStock();
+}
+
+function renderStock(){
+  const ed=rol==='editor';
+  const tbody=document.getElementById('tbody-stk');
+  let lista=PRODS.filter(p=>{
+    if(stBus&&!p.n.toLowerCase().includes(stBus)&&!String(p.c).includes(stBus)) return false;
+    const t=getStk(p.c), mn=getMin(p.c);
+    if(stFilt==='ok')   return t>0&&(mn>0?t>mn:t>5);
+    if(stFilt==='bajo') return t>0&&(mn>0?t<=mn:t<=5&&mn===0);
+    if(stFilt==='cero') return t<=0;
+    return true;
+  });
+  if(!lista.length){tbody.innerHTML='<tr class="fvacia"><td colspan="8">Sin resultados</td></tr>';renderMets();return;}
+  tbody.innerHTML=lista.map((p,i)=>{
+    const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
+    const t=getStk(p.c), mn=getMin(p.c);
+    const cls=t<=0?'r':t<=Math.max(mn,mn>0?mn:5)&&t>0?'b':'v';
+    const alt=i%2===1?'tralt':'';
+    const editCell=ed?`<td style="text-align:center"><input type="number" class="einp" value="${s.inicial||0}" min="0" onchange="setIni(${p.c},this.value)"></td>`:'';
+    return `<tr class="${alt}">
+      <td class="tdcod">${p.c}</td>
+      <td style="max-width:340px;font-size:13px;">${p.n}</td>
+      <td class="tdnum na">${s.inicial||0}</td>
+      <td class="tdnum v">+${s.entradas||0}</td>
+      <td class="tdnum r">-${s.salidas||0}</td>
+      <td class="tdnum ${cls}" style="font-size:15px;font-weight:700;">${t}</td>
+      <td style="text-align:right"><input type="number" class="minp" value="${mn}" min="0" ${ed?'':'disabled'} title="M\u00ednimo de alerta" onchange="setMin(${p.c},this.value)"></td>
+      ${editCell}
+    </tr>`;
+  }).join('');
+  renderMets();
+}
+
+function setIni(cod,val){
+  if(rol!=='editor') return;
+  const n=Math.max(0,parseInt(val)||0);
+  if(!stock[cod]) stock[cod]={inicial:0,entradas:0,salidas:0};
+  stock[cod].inicial=n; guardar(); renderMets(); renderAlBanner();
+  toast('Stock inicial actualizado','ok');
+}
+function setMin(cod,val){
+  if(rol!=='editor') return;
+  mins[cod]=Math.max(0,parseInt(val)||0);
+  guardar(); renderAlBanner();
+}
+
+function renderMets(){
+  const ok=PRODS.filter(p=>{const t=getStk(p.c),mn=getMin(p.c);return t>0&&(mn>0?t>mn:t>5);}).length;
+  const bajo=PRODS.filter(p=>{const t=getStk(p.c),mn=getMin(p.c);return t>0&&(mn>0?t<=mn:mn===0&&t<=5);}).length;
+  const cero=PRODS.filter(p=>getStk(p.c)<=0).length;
+  document.getElementById('m-tot').textContent=PRODS.length;
+  document.getElementById('m-ok').textContent=ok;
+  document.getElementById('m-bajo').textContent=bajo;
+  document.getElementById('m-cero').textContent=cero;
+  document.getElementById('m-movs').textContent=movs.length;
+  document.getElementById('bdg-ok').textContent=ok;
+  document.getElementById('bdg-hist').textContent=movs.length;
+  const aler=bajo+cero;
+  document.getElementById('bdg-aler').textContent=aler;
+}
+
+function renderAlBanner(){
+  const bajo=PRODS.filter(p=>{const t=getStk(p.c),mn=getMin(p.c);return mn>0&&t>0&&t<=mn;}).length;
+  const cero=PRODS.filter(p=>getStk(p.c)<=0&&getMin(p.c)>0).length;
+  const total=bajo+cero;
+  const ban=document.getElementById('abanner');
+  if(total>0){
+    ban.classList.add('show');
+    let msg=[];
+    if(cero>0) msg.push(`${cero} SIN STOCK`);
+    if(bajo>0) msg.push(`${bajo} por debajo del m\u00ednimo`);
+    document.getElementById('abantxt').textContent=`\u26a0\ufe0f ${msg.join(' \u2014 ')}`;
+  } else { ban.classList.remove('show'); }
+}
+
+function renderAlertas(){
+  const lista=document.getElementById('aler-lista');
+  const items=PRODS.filter(p=>{
+    const t=getStk(p.c), mn=getMin(p.c);
+    return mn>0&&(t<=0||t<=mn);
+  }).sort((a,b)=>getStk(a.c)-getStk(b.c));
+  if(!items.length){
+    lista.innerHTML='<div style="text-align:center;padding:30px;color:var(--V);font-size:15px;font-weight:700;">\u2705 Sin alertas configuradas o todo OK</div>';
+    return;
+  }
+  lista.innerHTML=items.map(p=>{
+    const t=getStk(p.c), mn=getMin(p.c), cero=t<=0;
+    return `<div class="ait ${cero?'acero':'abajo'}">
+      <span style="font-size:18px;">${cero?'\uD83D\uDEAB':'\u26a0\ufe0f'}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;">${p.n}</div>
+        <div style="font-size:11px;color:var(--G)">C\u00f3d. ${p.c} \u2014 M\u00ednimo configurado: ${mn}</div>
+      </div>
+      <span style="font-size:13px;font-weight:700;">${cero?'Sin stock':'Stock: '+t}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// SELECTS
+// ═══════════════════════════════════
+function armarSelects(){
+  const opts='<option value="">\u2014 Seleccion\u00e1 un producto \u2014</option>'+
+    PRODS.map(p=>`<option value="${p.c}">[${p.c}] ${p.n}</option>`).join('');
+  ['ent-sel','sal-sel','bol-sel'].forEach(id=>{const el=document.getElementById(id);if(el) el.innerHTML=opts;});
+}
+
+function filtrarSel(q,selId){
+  const sel=document.getElementById(selId);
+  const lq=q.toLowerCase();
+  const t=selId.startsWith('ent')?'ent':selId.startsWith('sal')?'sal':'bol';
+  sel.innerHTML='<option value="">\u2014 Seleccion\u00e1 \u2014</option>'+
+    PRODS.filter(p=>!lq||p.n.toLowerCase().includes(lq)||String(p.c).includes(lq))
+      .map(p=>`<option value="${p.c}">[${p.c}] ${p.n}</option>`).join('');
+  actuPrev(t);
+}
+
+function actuPrev(t){
+  const sel=document.getElementById(t+'-sel');
+  const prev=document.getElementById(t+'-prev');
+  const cod=parseInt(sel.value);
+  if(!cod){prev.innerHTML='Ning\u00fan producto seleccionado';return;}
+  const prod=PRODS.find(p=>p.c===cod);
+  const tot=getStk(cod);
+  const cls=tot>5?'sbv':tot>0?'sba':'sbr';
+  prev.innerHTML=`<span style="font-size:11px;color:var(--G);min-width:28px;">#${prod.c}</span>
+    <span class="prevnom">${prod.n}</span>
+    <span class="sbadge ${cls}">Stock: ${tot}</span>`;
+}
+
+// ═══════════════════════════════════
+// BOLETA
+// ═══════════════════════════════════
+function reiniciarBoleta(){
+  boletaTipo='';
+  boletaArchivoNombre='';
+  boletaLineas=[];
+  boletaPaso=1;
+  ['bol-numero','bol-quien','bol-monto','bol-bus','bol-qty','bol-item-obs'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  const file=document.getElementById('bol-file');
+  if(file) file.value='';
+  const fecha=document.getElementById('bol-fecha');
+  if(fecha) fecha.value=hoy();
+  const fileTxt=document.getElementById('bol-file-nombre');
+  if(fileTxt) fileTxt.textContent='Todav\u00eda no hay archivo adjunto.';
+  armarSelects();
+  const sel=document.getElementById('bol-sel');
+  if(sel) sel.value='';
+  actuPrev('bol');
+  renderBoletaUI();
+}
+
+function selBoletaTipo(tipo){
+  if(boletaLineas.length&&boletaTipo&&boletaTipo!==tipo&&!confirm('Cambiar el tipo de boleta va a limpiar los productos cargados. \u00bfQuer\u00e9s continuar?')) return;
+  if(boletaTipo!==tipo&&boletaLineas.length) boletaLineas=[];
+  boletaTipo=tipo;
+  renderBoletaUI();
+}
+
+function actualizarResumenBoleta(){
+  renderBoletaResumen();
+}
+
+function volverBoletaPaso(paso){
+  boletaPaso=paso;
+  renderBoletaUI();
+}
+
+function avanzarBoletaPaso1(){
+  if(rol!=='editor') return;
+  const numero=document.getElementById('bol-numero').value.trim();
+  const fecha=document.getElementById('bol-fecha').value;
+  if(!boletaTipo) return toast('Eleg\u00ed Entrada o Salida','err');
+  if(!numero) return toast('Ingres\u00e1 el n\u00famero de boleta','err');
+  if(!fecha) return toast('Ingres\u00e1 la fecha de la boleta','err');
+  boletaPaso=2;
+  renderBoletaUI();
+}
+
+function manejarAdjuntoBoleta(file){
+  if(!file) return;
+  boletaArchivoNombre=file.name;
+  document.getElementById('bol-file-nombre').textContent=`Archivo adjunto: ${file.name}`;
+  renderBoletaResumen();
+}
+
+function avanzarBoletaPaso2(){
+  if(rol!=='editor') return;
+  const montoRaw=document.getElementById('bol-monto').value;
+  const monto=parseFloat(montoRaw);
+  if(!boletaArchivoNombre&&(!montoRaw||!isFinite(monto)||monto<=0)) return toast('Adjunt\u00e1 una foto o carg\u00e1 un monto mayor a 0','err');
+  boletaPaso=3;
+  renderBoletaUI();
+}
+
+function getSalidaBoletaReservada(cod){
+  return boletaLineas
+    .filter(item=>item.cod===cod)
+    .reduce((acc,item)=>acc+item.cantidad,0);
+}
+
+function agregarLineaBoleta(){
+  if(rol!=='editor') return;
+  if(boletaPaso<3) return toast('Complet\u00e1 los pasos anteriores primero','err');
+  const cod=parseInt(document.getElementById('bol-sel').value);
+  const qty=parseInt(document.getElementById('bol-qty').value);
+  const nota=document.getElementById('bol-item-obs').value.trim();
+  if(!cod) return toast('Seleccion\u00e1 un producto','err');
+  if(!qty||qty<=0) return toast('Cantidad inv\u00e1lida','err');
+  const prod=PRODS.find(p=>p.c===cod);
+  if(!prod) return toast('Producto no encontrado','err');
+  if(boletaTipo==='salida'){
+    const disponible=getStk(cod)-getSalidaBoletaReservada(cod);
+    if(qty>disponible) return toast(`Stock insuficiente. Disponible: ${Math.max(disponible,0)}`,'err');
+  }
+  boletaLineas.push({cod,nombre:prod.n,cantidad:qty,nota});
+  ['bol-bus','bol-qty','bol-item-obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bol-sel').value='';
+  actuPrev('bol');
+  renderBoletaUI();
+  toast('Producto agregado a la boleta','ok');
+}
+
+function quitarLineaBoleta(idx){
+  boletaLineas.splice(idx,1);
+  renderBoletaUI();
+}
+
+function renderBoletaResumen(){
+  const resumen=document.getElementById('bol-resumen');
+  const resumenFinal=document.getElementById('bol-resumen-final');
+  if(!resumen||!resumenFinal) return;
+  const numero=document.getElementById('bol-numero').value.trim()||'\u2014';
+  const fecha=document.getElementById('bol-fecha').value||'\u2014';
+  const quien=document.getElementById('bol-quien').value.trim()||'Sin dato';
+  const montoVal=document.getElementById('bol-monto').value;
+  const monto=(montoVal&&parseFloat(montoVal)>0)?`$ ${formatearMonto(montoVal)}`:'Sin monto';
+  const tipo=boletaTipo==='entrada'?'Entrada':boletaTipo==='salida'?'Salida':'Sin definir';
+  const archivo=boletaArchivoNombre||'Sin archivo';
+  const html=`<div class="bometa">
+    <div class="bometaitem"><strong>Tipo</strong>${tipo}</div>
+    <div class="bometaitem"><strong>Boleta</strong>${numero}</div>
+    <div class="bometaitem"><strong>Fecha</strong>${fecha}</div>
+    <div class="bometaitem"><strong>Qui\u00e9n carga</strong>${quien}</div>
+    <div class="bometaitem"><strong>Monto</strong>${monto}</div>
+    <div class="bometaitem"><strong>Adjunto</strong>${archivo}</div>
+  </div>`;
+  resumen.innerHTML=html;
+  resumenFinal.innerHTML=html;
+}
+
+function renderBoletaLineas(){
+  const lista=document.getElementById('bol-lista');
+  if(!lista) return;
+  if(!boletaLineas.length){
+    lista.innerHTML='<div class="bovacio">Todav\u00eda no agregaste productos a esta boleta.</div>';
+    return;
+  }
+  lista.innerHTML=boletaLineas.map((item,idx)=>`
+    <div class="boline">
+      <div>
+        <strong>#${item.cod} \u2014 ${item.nombre}</strong>
+        <span>Cantidad: ${item.cantidad}</span>
+        <span>${item.nota?`Detalle: ${item.nota}`:'Sin detalle adicional'}</span>
+      </div>
+      <div style="text-align:right;">
+        <div class="bocant ${boletaTipo==='entrada'?'v':'r'}">${boletaTipo==='entrada'?'+':'-'}${item.cantidad}</div>
+        <button class="btn btn-ol" style="padding:6px 12px;font-size:12px;margin-top:8px;" onclick="quitarLineaBoleta(${idx})">Quitar</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderBoletaUI(){
+  const isEnt=boletaTipo==='entrada';
+  const isSal=boletaTipo==='salida';
+  document.getElementById('boop-entrada').classList.toggle('on',isEnt);
+  document.getElementById('boop-salida').classList.toggle('on',isSal);
+  [1,2,3].forEach(p=>document.getElementById('bostep-'+p).classList.toggle('show',boletaPaso===p));
+  document.getElementById('bol-paso3-titulo').textContent=isEnt?'Paso 3. Agregar productos que entran':isSal?'Paso 3. Agregar productos que salen':'Paso 3. Agregar productos';
+  document.getElementById('bol-paso3-sub').textContent=isEnt?'Cada producto que agregues se sumar\u00e1 al stock al confirmar la boleta.':isSal?'Cada producto que agregues se descontar\u00e1 del stock al confirmar la boleta.':'Eleg\u00ed primero si la boleta es de entrada o de salida.';
+  const btn=document.getElementById('bol-confirmar');
+  btn.className=`btn ${isEnt?'btn-v':isSal?'btn-r':'btn-na'}`;
+  btn.textContent=isEnt?'Confirmar entrada con boleta':isSal?'Confirmar salida con boleta':'Confirmar boleta';
+  renderBoletaResumen();
+  renderBoletaLineas();
+}
+
+function confirmarBoleta(){
+  if(rol!=='editor') return;
+  if(!boletaTipo) return toast('Eleg\u00ed Entrada o Salida','err');
+  const numero=document.getElementById('bol-numero').value.trim();
+  const fecha=document.getElementById('bol-fecha').value||hoy();
+  const quien=document.getElementById('bol-quien').value.trim();
+  const montoVal=document.getElementById('bol-monto').value;
+  const monto=parseFloat(montoVal);
+  if(!numero) return toast('Ingres\u00e1 el n\u00famero de boleta','err');
+  if(!boletaArchivoNombre&&(!montoVal||!isFinite(monto)||monto<=0)) return toast('Adjunt\u00e1 una foto o carg\u00e1 un monto mayor a 0','err');
+  if(!boletaLineas.length) return toast('Agreg\u00e1 al menos un producto','err');
+
+  const hora=new Date().toTimeString().slice(0,5);
+  for(const item of boletaLineas){
+    if(!stock[item.cod]) stock[item.cod]={inicial:0,entradas:0,salidas:0};
+    if(boletaTipo==='salida'&&item.cantidad>getStk(item.cod)) return toast(`Stock insuficiente para #${item.cod}`,'err');
+    if(boletaTipo==='entrada') stock[item.cod].entradas=(stock[item.cod].entradas||0)+item.cantidad;
+    else stock[item.cod].salidas=(stock[item.cod].salidas||0)+item.cantidad;
+
+    const nota=[
+      `Boleta #${numero}`,
+      quien?`Carg\u00f3: ${quien}`:'',
+      montoVal&&isFinite(monto)&&monto>0?`Monto: $ ${formatearMonto(montoVal)}`:'',
+      boletaArchivoNombre?`Adjunto: ${boletaArchivoNombre}`:'',
+      item.nota?`Detalle: ${item.nota}`:''
+    ].filter(Boolean).join(' | ');
+    movs.push({tipo:boletaTipo,cod:item.cod,nombre:item.nombre,cantidad:item.cantidad,fecha,hora,nota,ts:Date.now()+item.cod});
+  }
+
+  guardar();
+  renderTodo();
+  const totalItems=boletaLineas.length;
+  const tipoTxt=boletaTipo==='entrada'?'entrada':'salida';
+  reiniciarBoleta();
+  switchTab('stock');
+  toast(`Boleta de ${tipoTxt} aplicada con ${totalItems} producto(s)`,'ok');
+}
+
+function formatearMonto(valor){
+  const num=parseFloat(valor);
+  if(!isFinite(num)) return '0.00';
+  return num.toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ═══════════════════════════════════
+// ENTRADAS
+// ═══════════════════════════════════
+function regEntrada(){
+  if(rol!=='editor') return;
+  const cod=parseInt(document.getElementById('ent-sel').value);
+  const qty=parseInt(document.getElementById('ent-qty').value);
+  const fecha=document.getElementById('ent-fecha').value||hoy();
+  const obs=document.getElementById('ent-obs').value.trim();
+  if(!cod) return toast('Seleccion\u00e1 un producto','err');
+  if(!qty||qty<=0) return toast('Cantidad inv\u00e1lida','err');
+  if(!stock[cod]) stock[cod]={inicial:0,entradas:0,salidas:0};
+  stock[cod].entradas=(stock[cod].entradas||0)+qty;
+  const prod=PRODS.find(p=>p.c===cod);
+  movs.push({tipo:'entrada',cod,nombre:prod.n,cantidad:qty,fecha,hora:new Date().toTimeString().slice(0,5),nota:obs,ts:Date.now()});
+  guardar(); renderTodo();
+  ['ent-qty','ent-obs','ent-bus'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ent-sel').value=''; actuPrev('ent'); armarSelects();
+  toast(`+${qty} ingresado \u2014 ${prod.n.slice(0,40)}`,'ok');
+}
+
+// ═══════════════════════════════════
+// SALIDAS
+// ═══════════════════════════════════
+function regSalida(){
+  if(rol!=='editor') return;
+  const cod=parseInt(document.getElementById('sal-sel').value);
+  const qty=parseInt(document.getElementById('sal-qty').value);
+  const fecha=document.getElementById('sal-fecha').value||hoy();
+  const cli=document.getElementById('sal-cli').value.trim();
+  const obs=document.getElementById('sal-obs').value.trim();
+  if(!cod) return toast('Seleccion\u00e1 un producto','err');
+  if(!qty||qty<=0) return toast('Cantidad inv\u00e1lida','err');
+  if(qty>getStk(cod)) return toast(`Stock insuficiente. Disponible: ${getStk(cod)}`,'err');
+  if(!stock[cod]) stock[cod]={inicial:0,entradas:0,salidas:0};
+  stock[cod].salidas=(stock[cod].salidas||0)+qty;
+  const prod=PRODS.find(p=>p.c===cod);
+  const nota=[cli,obs].filter(Boolean).join(' \u2014 ');
+  movs.push({tipo:'salida',cod,nombre:prod.n,cantidad:qty,fecha,hora:new Date().toTimeString().slice(0,5),nota,ts:Date.now()});
+  guardar(); renderTodo();
+  ['sal-qty','sal-cli','sal-obs','sal-bus'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sal-sel').value=''; actuPrev('sal'); armarSelects();
+  toast(`-${qty} descontado \u2014 ${prod.n.slice(0,40)}`,'ok');
+}
+
+// ═══════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════
+function filtrarHist(q){ histBus=q.toLowerCase(); renderHist(); }
+
+function setHistMes(valor){
+  histMes=normalizarPeriodo(valor);
+  const inp=document.getElementById('hist-mes');
+  if(inp) inp.value=histMes;
+  renderHist();
+}
+
+function setHistTipo(valor){
+  histTipo=valor||'todos';
+  renderHist();
+}
+
+function normalizarPeriodo(periodo){
+  const valor=String(periodo||'').slice(0,7);
+  return /^\d{4}-\d{2}$/.test(valor)?valor:hoy().slice(0,7);
+}
+
+function capitalizar(txt){
+  return txt?txt.charAt(0).toUpperCase()+txt.slice(1):'';
+}
+
+function etiquetaPeriodo(periodo){
+  const base=normalizarPeriodo(periodo);
+  const fecha=new Date(`${base}-01T12:00:00`);
+  if(Number.isNaN(fecha.getTime())) return base;
+  return capitalizar(fecha.toLocaleDateString('es-UY',{month:'long',year:'numeric'}));
+}
+
+function parseMontoTexto(texto){
+  const match=String(texto||'').match(/Monto:\s*\$?\s*([\d.,]+)/i);
+  if(!match) return 0;
+  const limpio=match[1].replace(/\./g,'').replace(',','.');
+  const num=parseFloat(limpio);
+  return isFinite(num)?num:0;
+}
+
+function resumirMovimientos(lista){
+  const resumen={movimientos:lista.length,entradas:0,salidas:0,unidadesEntrada:0,unidadesSalida:0,balance:0,productos:0,boletas:0,montoBoletas:0};
+  const prods=new Set();
+  const boletas=new Set();
+  lista.forEach(m=>{
+    const qty=Number(m.cantidad)||0;
+    prods.add(m.cod);
+    if(m.tipo==='entrada'){
+      resumen.entradas+=1;
+      resumen.unidadesEntrada+=qty;
+    }else{
+      resumen.salidas+=1;
+      resumen.unidadesSalida+=qty;
+    }
+    const boleta=String(m.nota||'').match(/Boleta\s*#([^|]+)/i);
+    if(boleta){
+      const clave=boleta[1].trim();
+      if(clave&&!boletas.has(clave)){
+        boletas.add(clave);
+        resumen.boletas+=1;
+        resumen.montoBoletas+=parseMontoTexto(m.nota);
+      }
+    }
+  });
+  resumen.balance=resumen.unidadesEntrada-resumen.unidadesSalida;
+  resumen.productos=prods.size;
+  return resumen;
+}
+
+function getEstadoStockActual(){
+  let conStock=0, bajo=0, cero=0, unidades=0;
+  PRODS.forEach(p=>{
+    const total=getStk(p.c);
+    const min=getMin(p.c);
+    unidades+=total;
+    if(total>0) conStock+=1;
+    if(total<=0) cero+=1;
+    if(total>0&&(min>0?total<=min:min===0&&total<=5)) bajo+=1;
+  });
+  return {conStock,bajo,cero,unidades};
+}
+
+function getMovsPorPeriodo(periodo){
+  const base=normalizarPeriodo(periodo);
+  return movs.filter(m=>String(m.fecha||'').startsWith(base));
+}
+
+function getListaHistorialFiltrada(){
+  let lista=[...getMovsPorPeriodo(histMes)].reverse();
+  if(histTipo!=='todos') lista=lista.filter(m=>m.tipo===histTipo);
+  if(histBus){
+    lista=lista.filter(m=>{
+      const texto=[m.nombre,m.nota,m.fecha,m.hora,m.tipo,String(m.cod)].join(' ').toLowerCase();
+      return texto.includes(histBus);
+    });
+  }
+  return lista;
+}
+
+function renderCierres(periodo){
+  const lista=document.getElementById('cierres-lista');
+  if(!lista) return;
+  if(!cierres.length){
+    lista.innerHTML='<div class="cierresvacio">Todavia no hay cierres mensuales guardados.</div>';
+    return;
+  }
+  const ordenados=[...cierres].sort((a,b)=>String(b.periodo||'').localeCompare(String(a.periodo||''))||((b.createdAt||0)-(a.createdAt||0)));
+  lista.innerHTML=ordenados.map(c=>{
+    const activo=c.periodo===periodo;
+    const fechaCierre=c.createdAt?new Date(c.createdAt).toLocaleString('es-UY'):'Sin fecha';
+    return `<div class="cierrecard ${activo?'on':''}">
+      <div class="cierrehead">
+        <div class="cierrettl">${c.label||etiquetaPeriodo(c.periodo)}</div>
+        <div class="cierretime">${fechaCierre}</div>
+      </div>
+      <div class="cierremeta">${c.movimientos||0} movimientos, ${c.productos||0} productos tocados y ${c.boletas||0} boletas registradas.</div>
+      <div class="cierrestats">
+        <div class="cierrestat">Balance<strong>${c.balance>=0?'+':''}${(c.balance||0).toLocaleString('es-UY')}</strong></div>
+        <div class="cierrestat">Monto<strong>$ ${formatearMonto(c.montoBoletas||0)}</strong></div>
+        <div class="cierrestat">Stock con unidades<strong>${(c.stockCon||0).toLocaleString('es-UY')}</strong></div>
+        <div class="cierrestat">Alertas<strong>${((c.stockBajo||0)+(c.stockCero||0)).toLocaleString('es-UY')}</strong></div>
+      </div>
+      <div class="cierreacc"><button class="btn btn-ol" onclick="setHistMes('${c.periodo}')">Abrir mes</button></div>
+    </div>`;
+  }).join('');
+}
+
+function renderHist(){
+  const listaCont=document.getElementById('hist-lista');
+  if(!listaCont) return;
+  histMes=normalizarPeriodo(histMes);
+  const inpMes=document.getElementById('hist-mes');
+  if(inpMes) inpMes.value=histMes;
+  const selTipo=document.getElementById('hist-tipo');
+  if(selTipo) selTipo.value=histTipo;
+  const badge=document.getElementById('hist-periodo-badge');
+  if(badge) badge.textContent=`Periodo: ${etiquetaPeriodo(histMes)}`;
+
+  const listaMes=getMovsPorPeriodo(histMes);
+  const lista=getListaHistorialFiltrada();
+  const resumenMes=resumirMovimientos(listaMes);
+  const resumen=resumirMovimientos(lista);
+  const estado=getEstadoStockActual();
+  const cierreMes=cierres.find(c=>c.periodo===histMes);
+
+  document.getElementById('hist-stat-movs').textContent=resumen.movimientos.toLocaleString('es-UY');
+  document.getElementById('hist-stat-movs-meta').textContent=`${histTipo==='todos'?'Todas las operaciones del filtro actual.':`Filtro por ${histTipo}.`}`;
+  document.getElementById('hist-stat-in').textContent=resumen.entradas.toLocaleString('es-UY');
+  document.getElementById('hist-stat-in-meta').textContent=`${resumen.unidadesEntrada.toLocaleString('es-UY')} unidades ingresadas`;
+  document.getElementById('hist-stat-out').textContent=resumen.salidas.toLocaleString('es-UY');
+  document.getElementById('hist-stat-out-meta').textContent=`${resumen.unidadesSalida.toLocaleString('es-UY')} unidades descontadas`;
+  document.getElementById('hist-stat-balance').textContent=`${resumen.balance>=0?'+':''}${resumen.balance.toLocaleString('es-UY')}`;
+  document.getElementById('hist-stat-balance-meta').textContent='Diferencia entre entradas y salidas del filtro.';
+  document.getElementById('hist-stat-prods').textContent=resumen.productos.toLocaleString('es-UY');
+  document.getElementById('hist-stat-boletas-meta').textContent=`${resumen.boletas.toLocaleString('es-UY')} boletas detectadas`;
+  document.getElementById('hist-feed-sub').textContent=`${etiquetaPeriodo(histMes)}${histBus?` · Busqueda: "${histBus}"`:''}`;
+  document.getElementById('hist-feed-badge').textContent=`${lista.length.toLocaleString('es-UY')} registros`;
+
+  document.getElementById('mes-titulo').textContent=`Resumen de ${etiquetaPeriodo(histMes)}`;
+  document.getElementById('mes-sub').textContent=cierreMes?'Este periodo ya tiene un cierre guardado. Puedes reemplazarlo si hace falta.':'Este resumen se toma del historial del mes seleccionado.';
+  document.getElementById('mes-cierre-estado').textContent=cierreMes?'Cierre guardado':'Sin cierre';
+  document.getElementById('mes-cierre-estado').className=`badge ${cierreMes?'bge':'bga'}`;
+  document.getElementById('mes-stat-movs').textContent=resumenMes.movimientos.toLocaleString('es-UY');
+  document.getElementById('mes-stat-balance').textContent=`${resumenMes.balance>=0?'+':''}${resumenMes.balance.toLocaleString('es-UY')}`;
+  document.getElementById('mes-stat-boletas').textContent=resumenMes.boletas.toLocaleString('es-UY');
+  document.getElementById('mes-stat-monto').textContent=`$ ${formatearMonto(resumenMes.montoBoletas||0)}`;
+  document.getElementById('mes-stat-stock').textContent=estado.conStock.toLocaleString('es-UY');
+  document.getElementById('mes-stat-alertas').textContent=((estado.bajo||0)+(estado.cero||0)).toLocaleString('es-UY');
+
+  if(!lista.length){
+    listaCont.innerHTML='<div class="histempty">No hay movimientos para ese mes o con esos filtros.</div>';
+    renderCierres(histMes);
+    return;
+  }
+  listaCont.innerHTML=lista.map(m=>{
+    const entrada=m.tipo==='entrada';
+    const conBoleta=/Boleta\s*#/i.test(String(m.nota||''));
+    const tipoTxt=entrada?(conBoleta?'Entrada con boleta':'Entrada'):(conBoleta?'Salida con boleta':'Salida');
+    return `<div class="histitem">
+      <div class="histicon ${entrada?'in':'out'}">${entrada?'+':'-'}</div>
+      <div class="histbody">
+        <div class="histhd">
+          <div>
+            <div class="histname">${m.nombre}</div>
+            <div class="histmeta">${m.fecha}${m.hora?` · ${m.hora}`:''} · ${tipoTxt} · ${formatCod(m.cod)}</div>
+          </div>
+          <span class="badge ${entrada?'bge':'bgs'}">${tipoTxt}</span>
+        </div>
+        ${m.nota?`<div class="histnota">${m.nota}</div>`:''}
+      </div>
+      <div class="histqty ${entrada?'in':'out'}">
+        ${entrada?'+':'-'}${(Number(m.cantidad)||0).toLocaleString('es-UY')}
+        <div class="histqtysub">${entrada?'Unidades ingresadas':'Unidades salidas'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  renderCierres(histMes);
+}
+
+function cerrarMesHistorial(){
+  if(rol!=='editor') return;
+  const periodo=normalizarPeriodo(histMes);
+  const listaMes=getMovsPorPeriodo(periodo);
+  if(!listaMes.length) return toast('No hay movimientos para cerrar en ese mes','info');
+  const resumen=resumirMovimientos(listaMes);
+  const estado=getEstadoStockActual();
+  const cierre={
+    periodo,
+    label:etiquetaPeriodo(periodo),
+    createdAt:Date.now(),
+    movimientos:resumen.movimientos,
+    entradas:resumen.entradas,
+    salidas:resumen.salidas,
+    unidadesEntrada:resumen.unidadesEntrada,
+    unidadesSalida:resumen.unidadesSalida,
+    balance:resumen.balance,
+    productos:resumen.productos,
+    boletas:resumen.boletas,
+    montoBoletas:resumen.montoBoletas,
+    stockCon:estado.conStock,
+    stockBajo:estado.bajo,
+    stockCero:estado.cero,
+    stockUnidades:estado.unidades
+  };
+  const idx=cierres.findIndex(c=>c.periodo===periodo);
+  if(idx>=0&&!confirm(`Ya existe un cierre para ${etiquetaPeriodo(periodo)}. \u00bfQuer\u00e9s reemplazarlo?`)) return;
+  if(idx>=0) cierres.splice(idx,1,cierre);
+  else cierres.push(cierre);
+  guardar();
+  renderHist();
+  toast(`Cierre mensual guardado: ${etiquetaPeriodo(periodo)}`,'ok');
+}
+
+function borrarHist(){
+  if(rol!=='editor') return;
+  if(!confirm('\u00bfBorrar todo el historial? Los stocks se mantienen y los cierres mensuales guardados no se borran.')) return;
+  movs=[]; guardar(); renderTodo(); toast('Historial borrado','info');
+}
+
+// ═══════════════════════════════════
+// PRODUCTOS (EDITOR)
+// ═══════════════════════════════════
+function switchCatalogoTab(tab){
+  if(rol!=='editor'&&tab!=='nombres') tab='nombres';
+  catVista=tab;
+  renderProds();
+}
+
+function filtrarProds(q){
+  prodBus=String(q||'').toLowerCase();
+  renderProds();
+}
+
+function filtrarCatalogoCategoria(valor){
+  catFiltro=valor||'todas';
+  renderProds();
+}
+
+function registrarAuditoria(cod,titulo,detalle){
+  auditLog.push({cod,titulo,detalle,ts:Date.now()});
+  if(auditLog.length>400) auditLog=auditLog.slice(-400);
+}
+
+function resumenSinonimos(){
+  return PRODS.reduce((acc,p)=>acc+(Array.isArray(p.syn)?p.syn.length:0),0);
+}
+
+function getCategoriasCatalogo(){
+  return [...new Set(PRODS.map(p=>p.cat||'General'))].sort((a,b)=>a.localeCompare(b,'es'));
+}
+
+function renderCatalogoTabs(){
+  const soloLectura=rol!=='editor';
+  ['nuevo','nombres','auditoria'].forEach(tab=>{
+    const btn=document.getElementById('catsub-'+tab);
+    const view=document.getElementById('catview-'+tab);
+    if(btn) btn.classList.toggle('on',catVista===tab);
+    if(btn&&tab!=='nombres') btn.disabled=soloLectura;
+    if(view) view.classList.toggle('show',catVista===tab);
+  });
+}
+
+function renderCatalogoFiltros(){
+  const sel=document.getElementById('cat-filtro');
+  if(!sel) return;
+  const actual=catFiltro;
+  const opts=['<option value="todas">Todas</option>']
+    .concat(getCategoriasCatalogo().map(cat=>`<option value="${cat}">${cat}</option>`));
+  sel.innerHTML=opts.join('');
+  sel.value=getCategoriasCatalogo().includes(actual)?actual:'todas';
+  catFiltro=sel.value;
+}
+
+function renderCatalogoNombres(){
+  renderCatalogoFiltros();
+  const lista=PRODS.filter(p=>{
+    const okTexto=!prodBus||p.n.toLowerCase().includes(prodBus)||String(p.c).includes(prodBus)||p.syn.some(s=>s.toLowerCase().includes(prodBus));
+    const okCat=catFiltro==='todas'||p.cat===catFiltro;
+    return okTexto&&okCat;
+  });
+  document.getElementById('cat-resumen').textContent=`${lista.length} productos`;
+  document.getElementById('cat-resumen-syn').textContent=`${resumenSinonimos()} sin\u00f3nimos cargados`;
+  const cont=document.getElementById('prods-lista');
+  if(!lista.length){
+    cont.innerHTML='<div class="catempty">No hay productos para ese filtro.</div>';
+    return;
+  }
+  cont.innerHTML=lista.map(p=>{
+    const syn=(p.syn||[]).slice(0,4).map(s=>`<span class="catpill syn">${s}</span>`).join('');
+    const extra=(p.syn||[]).length>4?`<span class="catpill syn">+${p.syn.length-4} m\u00e1s</span>`:'';
+    const btn=rol==='editor'
+      ?`<button class="caticonbtn" onclick="abrirCatalogoProd(${p.c})" title="Editar cat\u00e1logo">&#9998;</button>`
+      :'';
+    return `<div class="catcard">
+      <div class="catmain">
+        <div class="catname">${p.n}</div>
+        <div class="catsubline">${formatCod(p.c)} &middot; ${p.u} &middot; ${p.cat}</div>
+        <div class="cattags">
+          <span class="catpill">Stock: ${getStk(p.c)}</span>
+          ${(p.syn||[]).length?syn+extra:'<span class="catpill syn">Sin sin\u00f3nimos</span>'}
+        </div>
+      </div>
+      <div class="catcardacc">${btn}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCatalogoAuditoria(){
+  const cont=document.getElementById('cat-audit');
+  if(!cont) return;
+  if(!auditLog.length){
+    cont.innerHTML='<div class="catempty">Todav\u00eda no hay cambios registrados en el cat\u00e1logo.</div>';
+    return;
+  }
+  cont.innerHTML=[...auditLog].slice(-80).reverse().map(item=>`
+    <div class="audititem">
+      <div class="audithead">
+        <div class="audittitle"><span class="auditcode">${formatCod(item.cod)}</span> ${item.titulo}</div>
+        <div class="audittime">${new Date(item.ts).toLocaleString('es-UY')}</div>
+      </div>
+      <div class="auditdesc">${item.detalle}</div>
+    </div>`).join('');
+}
+
+function renderProds(){
+  if(rol!=='editor'&&catVista!=='nombres') catVista='nombres';
+  renderCatalogoTabs();
+  renderCatalogoNombres();
+  renderCatalogoAuditoria();
+}
+
+function abrirCatalogoProd(cod){
+  if(rol!=='editor') return;
+  const prod=PRODS.find(p=>p.c===cod);
+  if(!prod) return;
+  catEditCod=cod;
+  document.getElementById('ce-codigo').value=`${formatCod(prod.c)} (#${prod.c})`;
+  document.getElementById('ce-nombre').value=prod.n;
+  document.getElementById('ce-categoria').value=prod.cat||'';
+  document.getElementById('ce-unidad').value=prod.u||'';
+  document.getElementById('ce-sinonimos').value=(prod.syn||[]).join('\n');
+  document.getElementById('ov-cat-edit').classList.add('show');
+  setTimeout(()=>document.getElementById('ce-nombre').focus(),60);
+}
+
+function cerrarCatalogoProd(){
+  catEditCod=null;
+  document.getElementById('ov-cat-edit').classList.remove('show');
+}
+
+function guardarCatalogoProd(){
+  if(rol!=='editor'||!catEditCod) return;
+  const prod=PRODS.find(p=>p.c===catEditCod);
+  if(!prod) return;
+  const nombre=normTxt(document.getElementById('ce-nombre').value);
+  const cat=String(document.getElementById('ce-categoria').value||'').trim()||inferirCategoria(nombre);
+  const unidad=String(document.getElementById('ce-unidad').value||'').trim()||inferirUnidad(nombre);
+  const syn=parseSinonimos(document.getElementById('ce-sinonimos').value,nombre);
+  if(!nombre) return toast('El nombre no puede estar vac\u00edo','err');
+
+  const cambios=[];
+  if(prod.n!==nombre) cambios.push(`Nombre: ${prod.n} -> ${nombre}`);
+  if(prod.cat!==cat) cambios.push(`Categor\u00eda: ${prod.cat} -> ${cat}`);
+  if(prod.u!==unidad) cambios.push(`Unidad: ${prod.u} -> ${unidad}`);
+  if(JSON.stringify(prod.syn)!==JSON.stringify(syn)) cambios.push(`Sin\u00f3nimos: ${(syn.length?syn.join(', '):'sin sin\u00f3nimos')}`);
+  if(!cambios.length){ cerrarCatalogoProd(); return toast('No hubo cambios para guardar','info'); }
+
+  prod.n=nombre;
+  prod.cat=cat;
+  prod.u=unidad;
+  prod.syn=syn;
+  registrarAuditoria(prod.c,'Cat\u00e1logo actualizado',cambios.join(' | '));
+  guardar();
+  armarSelects();
+  renderTodo();
+  cerrarCatalogoProd();
+  toast('Cat\u00e1logo actualizado','ok');
+}
+
+function guardarNombreProd(cod){
+  abrirCatalogoProd(cod);
+}
+
+function mostrarNuevoProd(){ document.getElementById('ov-nprod').classList.add('show'); setTimeout(()=>document.getElementById('np-nombre').focus(),60); }
+function cerrarNuevoProd(){ document.getElementById('ov-nprod').classList.remove('show'); }
+
+function agregarProducto(){
+  const nombre=normTxt((document.getElementById('cp-nombre')||document.getElementById('np-nombre')).value);
+  const categoria=((document.getElementById('cp-categoria')||{}).value||'').trim()||inferirCategoria(nombre);
+  const unidad=((document.getElementById('cp-unidad')||{}).value||'').trim()||inferirUnidad(nombre);
+  const sinonimos=parseSinonimos(((document.getElementById('cp-sinonimos')||{}).value||''),nombre);
+  const stk=parseInt((document.getElementById('cp-stock')||document.getElementById('np-stock')).value)||0;
+  const mn=parseInt((document.getElementById('cp-min')||document.getElementById('np-min')).value)||0;
+  if(!nombre) return toast('Ingres\u00e1 un nombre','err');
+  if(PRODS.some(p=>p.n===nombre)) return toast('Ya existe un producto con ese nombre','err');
+  const maxCod=Math.max(...PRODS.map(p=>p.c));
+  const nc=maxCod+1;
+  PRODS.push(normalizarProd({c:nc,n:nombre,cat:categoria,u:unidad,syn:sinonimos}));
+  stock[nc]={inicial:stk,entradas:0,salidas:0};
+  mins[nc]=mn;
+  ['cp-nombre','cp-categoria','cp-unidad','cp-sinonimos','np-nombre'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['cp-stock','cp-min','np-stock','np-min'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='0'; });
+  registrarAuditoria(nc,'Producto creado',`Alta de ${nombre} en ${categoria} (${unidad}).`);
+  catVista='nombres';
+  cerrarNuevoProd(); guardar(); armarSelects(); renderTodo();
+  toast(`Producto #${nc} agregado`,'ok');
+}
+
+// IMPORTAR EXCEL
+// ═══════════════════════════════════
+function mostrarImport(){ document.getElementById('ov-import').classList.add('show'); }
+function cerrarImport(){ document.getElementById('ov-import').classList.remove('show'); }
+
+function manejarExcel(file){
+  if(!file) return;
+  cerrarImport();
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const wsN=wb.SheetNames.find(n=>n.toUpperCase().includes('STOCK'))||wb.SheetNames[0];
+      const data=XLSX.utils.sheet_to_json(wb.Sheets[wsN],{header:1,defval:''});
+      let hdr=-1;
+      for(let i=0;i<Math.min(data.length,10);i++){
+        const r=data[i].map(c=>String(c).toUpperCase());
+        if(r.some(c=>c.includes('CODIGO'))&&r.some(c=>c.includes('ARTICULO'))){hdr=i;break;}
+      }
+      if(hdr===-1){toast('No se encontr\u00f3 hoja STOCK v\u00e1lida','err');return;}
+      const hdrs=data[hdr].map(c=>String(c).toUpperCase());
+      const cCod=hdrs.findIndex(c=>c.includes('CODIGO'));
+      const cIni=hdrs.findIndex(c=>c.includes('INICIAL'));
+      let loaded=0;
+      for(let i=hdr+1;i<data.length;i++){
+        const row=data[i]; const cod=parseInt(row[cCod]);
+        if(!cod) continue;
+        if(!stock[cod]) stock[cod]={inicial:0,entradas:0,salidas:0};
+        if(cIni>=0){const n=parseFloat(row[cIni])||0;stock[cod].inicial=n;if(n>0)loaded++;}
+      }
+      guardar(); renderTodo(); toast(`Excel importado: ${loaded} productos con stock`,'ok');
+    }catch(err){toast('Error al leer el Excel: '+err.message,'err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════
+// EXPORTAR EXCEL
+// ═══════════════════════════════════
+function exportarExcel(){
+  const wb=XLSX.utils.book_new();
+  const sD=[['CODIGO','ARTICULO','STOCK INICIAL','ENTRADAS','SALIDAS','STOCK ACTUAL','MINIMO']];
+  PRODS.forEach(p=>{
+    const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
+    sD.push([p.c,p.n,s.inicial||0,s.entradas||0,s.salidas||0,getStk(p.c),mins[p.c]||0]);
+  });
+  const ws1=XLSX.utils.aoa_to_sheet(sD);
+  ws1['!cols']=[{wch:8},{wch:48},{wch:14},{wch:12},{wch:12},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws1,'STOCK');
+
+  const eD=[['CODIGO','ARTICULO','CANTIDAD','FECHA','HORA','OBSERVACION']];
+  movs.filter(m=>m.tipo==='entrada').forEach(m=>eD.push([m.cod,m.nombre,m.cantidad,m.fecha,m.hora||'',m.nota||'']));
+  const ws2=XLSX.utils.aoa_to_sheet(eD);
+  ws2['!cols']=[{wch:8},{wch:48},{wch:12},{wch:14},{wch:8},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws2,'ENTRADAS');
+
+  const slD=[['CODIGO','ARTICULO','CANTIDAD','FECHA','HORA','CLIENTE/NOTA']];
+  movs.filter(m=>m.tipo==='salida').forEach(m=>slD.push([m.cod,m.nombre,m.cantidad,m.fecha,m.hora||'',m.nota||'']));
+  const ws3=XLSX.utils.aoa_to_sheet(slD);
+  ws3['!cols']=[{wch:8},{wch:48},{wch:12},{wch:14},{wch:8},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,ws3,'SALIDAS');
+
+  const aD=[['CODIGO','ARTICULO','STOCK ACTUAL','MINIMO','ESTADO']];
+  PRODS.filter(p=>{const t=getStk(p.c),mn=getMin(p.c);return mn>0&&(t<=0||t<=mn);}).forEach(p=>{
+    const t=getStk(p.c),mn=getMin(p.c);
+    aD.push([p.c,p.n,t,mn,t<=0?'SIN STOCK':'BAJO']);
+  });
+  const ws4=XLSX.utils.aoa_to_sheet(aD);
+  XLSX.utils.book_append_sheet(wb,ws4,'ALERTAS');
+
+  XLSX.writeFile(wb,`nicola_stock_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.xlsx`);
+  toast('Excel exportado correctamente','ok');
+}
+
+// ═══════════════════════════════════
+// DRAG & DROP helpers
+// ═══════════════════════════════════
+function dzOver(e,id){ e.preventDefault(); document.getElementById(id).classList.add('drag'); }
+function dzLeave(id){ document.getElementById(id).classList.remove('drag'); }
+function dzDrop(e,id,fn){ e.preventDefault(); dzLeave(id); fn(e.dataTransfer.files[0]); }
+
+// ═══════════════════════════════════
+// RENDER GENERAL
+// ═══════════════════════════════════
+function renderTodo(){ renderStock(); renderHist(); renderAlBanner(); renderProds(); actuSub(); }
+
+function actuSub(msg){
+  const con=PRODS.filter(p=>getStk(p.c)>0).length;
+  document.getElementById('hdrsub').textContent=msg||`${con} productos con stock \u2014 ${new Date().toLocaleDateString('es-AR')}`;
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+function hoy(){ return new Date().toISOString().split('T')[0]; }
+let toastT;
+function toast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+type;
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200);
+}
+</script>
+</body>
+</html>
