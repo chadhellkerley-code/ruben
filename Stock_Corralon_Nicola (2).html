@@ -1521,10 +1521,9 @@ function selRol(r){
 function doLogin(){
   if(!selrol){document.getElementById('lerr').textContent='Selecciona un acceso.';return;}
   if(!iniciarFirebase()){
-    document.getElementById('lerr').textContent='ConfigurÃ¡ Firebase en firebase-config.js.';
+    document.getElementById('lerr').textContent='Configura Firebase en firebase-config.js.';
     return;
   }
-  if(!selrol){document.getElementById('lerr').textContent='Seleccioná un acceso.';return;}
   if(selrol==='editor'){
     const pin=document.getElementById('pinin').value;
     if(pin!==PIN){
