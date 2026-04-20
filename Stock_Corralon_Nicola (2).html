@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stock Corralón Nicola</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
 <style>
 :root{
   --N:#E8620A;--Nm:#F07830;--Nc:#FEF0E7;--Nd:#B04A00;
@@ -435,7 +438,7 @@ tr:hover td{background:#FEF6F0;}
   <div class="tab" id="tab-alertas" onclick="switchTab('alertas')">Alertas <span class="bdg r" id="bdg-aler">0</span></div>
   <div class="tab" id="tab-productos" onclick="switchTab('productos')">Cat&#225;logo</div>
   <div class="tab" id="tab-boleta" onclick="switchTab('boleta')">Boleta</div>
-  <div class="tab se" id="tab-historial" onclick="switchTab('historial')">Historial <span class="bdg" id="bdg-hist">0</span></div>
+  <div class="tab" id="tab-historial" onclick="switchTab('historial')">Historial <span class="bdg" id="bdg-hist">0</span></div>
 </div>
 
 <!-- ═══ STOCK ═══ -->
@@ -936,12 +939,16 @@ tr:hover td{background:#FEF6F0;}
 // CONFIGURACIÓN
 // ═══════════════════════════════════
 const PIN = '1011';
-const KS  = 'nicola_stock_v4';
-const KM  = 'nicola_movs_v4';
-const KP  = 'nicola_prods_v4';
-const KMN = 'nicola_mins_v4';
-const KA  = 'nicola_catalog_audit_v1';
-const KC  = 'nicola_cierres_v1';
+const LEGACY_KEYS = {
+  stock:'nicola_stock_v4',
+  movs:'nicola_movs_v4',
+  prods:'nicola_prods_v4',
+  mins:'nicola_mins_v4',
+  audit:'nicola_catalog_audit_v1',
+  cierres:'nicola_cierres_v1'
+};
+const FIREBASE_CONFIG = window.NICOLA_FIREBASE_CONFIG || null;
+const FIREBASE_DB_PATH = window.NICOLA_FIREBASE_DB_PATH || 'apps/corralonNicola/estado';
 
 function normTxt(v){
   return String(v||'').trim().replace(/\s+/g,' ').toUpperCase();
@@ -1177,7 +1184,9 @@ let rol   = null, selrol = null;
 let stFilt='todos', stBus='', histBus='', histMes=new Date().toISOString().slice(0,7), histTipo='todos', prodBus='', catFiltro='todas', catVista='nombres', catEditCod=null;
 let boletaTipo='', boletaArchivoNombre='', boletaArchivoTipo='', boletaArchivoTamano=0, boletaArchivoUrl='';
 let boletaLineas=[], boletaPaso=1;
-let saveT=null, syncT=null;
+let saveT=null;
+let fbApp=null, db=null, estadoRef=null, estadoRemotoCache=null;
+let remotoInicializado=false, remotoSuscripto=false;
 
 // ═══════════════════════════════════
 // PERSISTENCIA — localStorage (mismo navegador) + BroadcastChannel (multi-tab)
@@ -1336,6 +1345,7 @@ function aplicarRol(){
   document.getElementById('th-edit').style.display=ed?'':'none';
   document.querySelectorAll('.se').forEach(el=>el.style.display=ed?'':'none');
   document.getElementById('tab-boleta').style.display=ed?'':'none';
+  document.getElementById('tab-historial').style.display=ed?'':'none';
 }
 
 // ═══════════════════════════════════
