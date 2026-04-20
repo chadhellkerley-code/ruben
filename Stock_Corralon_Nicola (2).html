@@ -388,7 +388,6 @@ tr:hover td{background:#FEF6F0;}
   <div class="rbdot"></div>
   <span>Acceso <strong>Editor</strong></span>
   <div id="saveind"><div id="savedot"></div><span id="savetxt">Guardado &#10003;</span></div>
-  <button class="rbbtn" onclick="switchTab('boleta')">&#129534; Boletas</button>
   <button class="rbbtn" onclick="mostrarImport()">&#8593; Importar Excel</button>
   <button class="rbbtn" onclick="salir()">Salir</button>
 </div>
@@ -406,7 +405,6 @@ tr:hover td{background:#FEF6F0;}
   </div>
   <div class="hdrder">
     <button class="hbtn na" onclick="exportarExcel()">&#8595; Exportar Excel</button>
-    <button class="hbtn" id="hbtn-boleta" style="display:none" onclick="switchTab('boleta')">&#129534; Boleta</button>
   </div>
 </div>
 
@@ -420,12 +418,12 @@ tr:hover td{background:#FEF6F0;}
 <!-- Nav -->
 <div class="nav">
   <div class="tab active" id="tab-stock" onclick="switchTab('stock')">Stock <span class="bdg v" id="bdg-ok">0</span></div>
-  <div class="tab se" id="tab-boleta" onclick="switchTab('boleta')">Boleta</div>
   <div class="tab se" id="tab-entrada" onclick="switchTab('entrada')">Entradas</div>
   <div class="tab se" id="tab-salida" onclick="switchTab('salida')">Salidas</div>
   <div class="tab se" id="tab-historial" onclick="switchTab('historial')">Historial <span class="bdg" id="bdg-hist">0</span></div>
   <div class="tab" id="tab-alertas" onclick="switchTab('alertas')">Alertas <span class="bdg r" id="bdg-aler">0</span></div>
   <div class="tab" id="tab-productos" onclick="switchTab('productos')">Cat&#225;logo</div>
+  <div class="tab se" id="tab-boleta" onclick="switchTab('boleta')">Boleta</div>
 </div>
 
 <!-- ═══ STOCK ═══ -->
@@ -1323,7 +1321,6 @@ function aplicarRol(){
   document.getElementById('avis').classList.toggle('show',!ed);
   document.getElementById('cat-modo').classList.toggle('show',!ed);
   document.getElementById('th-edit').style.display=ed?'':'none';
-  document.getElementById('hbtn-boleta').style.display=ed?'':'none';
   document.querySelectorAll('.se').forEach(el=>el.style.display=ed?'':'none');
 }
 
