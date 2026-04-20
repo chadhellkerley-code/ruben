@@ -196,6 +196,20 @@ tr:hover td{background:#FEF6F0;}
 .bometaitem strong{display:block;color:var(--K);font-size:13px;margin-bottom:3px;}
 .bohelp{font-size:12px;color:var(--G);margin-bottom:14px;line-height:1.6;}
 .bofile{margin-top:10px;font-size:12px;color:var(--G);min-height:18px;}
+.bofile.ok{color:var(--V);font-weight:600;}
+.bofile.err{color:var(--R);}
+.bofileprev{display:none;margin-top:12px;border:1px solid var(--Gb);border-radius:14px;background:white;padding:12px;}
+.bofileprev.show{display:block;}
+.bofilehead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.bofilemeta{min-width:0;flex:1;}
+.bofilettl{font-size:13px;font-weight:700;color:var(--K);line-height:1.4;word-break:break-word;}
+.bofilesub{font-size:12px;color:var(--G);margin-top:4px;line-height:1.5;}
+.bofileactions{display:flex;gap:8px;flex-wrap:wrap;}
+.bofilepreviewbox{margin-top:12px;border-radius:12px;overflow:hidden;background:var(--Gc);border:1px solid var(--Gb);}
+.bofilepreviewbox img,.bofilepreviewbox iframe{display:block;width:100%;height:auto;max-height:320px;object-fit:contain;background:white;}
+.bofileplaceholder{padding:18px 16px;font-size:12px;color:var(--G);line-height:1.6;background:#FCFCFA;}
+.boresok{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--Vc);color:#1b5e20;font-size:12px;font-weight:600;}
+.boreswarn{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--Ac);color:#7f3d00;font-size:12px;font-weight:600;}
 .bolist{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
 .boline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--Gb);border-radius:12px;background:white;}
 .boline strong{display:block;font-size:13px;margin-bottom:4px;}
@@ -531,6 +545,7 @@ tr:hover td{background:#FEF6F0;}
           </div>
           <input type="file" id="bol-file" accept="image/*,.pdf" style="display:none" onchange="manejarAdjuntoBoleta(this.files[0])">
           <div class="bofile" id="bol-file-nombre">Todav&#237;a no hay archivo adjunto.</div>
+          <div class="bofileprev" id="bol-file-preview"></div>
         </div>
       </div>
       <div class="boacc">
@@ -1160,7 +1175,7 @@ let auditLog = [];
 let cierres = [];
 let rol   = null, selrol = null;
 let stFilt='todos', stBus='', histBus='', histMes=new Date().toISOString().slice(0,7), histTipo='todos', prodBus='', catFiltro='todas', catVista='nombres', catEditCod=null;
-let boletaTipo='', boletaArchivoNombre='';
+let boletaTipo='', boletaArchivoNombre='', boletaArchivoTipo='', boletaArchivoTamano=0, boletaArchivoUrl='';
 let boletaLineas=[], boletaPaso=1;
 let saveT=null, syncT=null;
 
@@ -1484,24 +1499,21 @@ function actuPrev(t){
 // BOLETA
 // ═══════════════════════════════════
 function reiniciarBoleta(){
+  limpiarAdjuntoBoleta(false);
   boletaTipo='';
-  boletaArchivoNombre='';
   boletaLineas=[];
   boletaPaso=1;
   ['bol-numero','bol-quien','bol-monto','bol-bus','bol-qty','bol-item-obs'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.value='';
   });
-  const file=document.getElementById('bol-file');
-  if(file) file.value='';
   const fecha=document.getElementById('bol-fecha');
   if(fecha) fecha.value=hoy();
-  const fileTxt=document.getElementById('bol-file-nombre');
-  if(fileTxt) fileTxt.textContent='Todav\u00eda no hay archivo adjunto.';
   armarSelects();
   const sel=document.getElementById('bol-sel');
   if(sel) sel.value='';
   actuPrev('bol');
+  actualizarEstadoAdjuntoBoleta();
   renderBoletaUI();
 }
 
@@ -1534,9 +1546,26 @@ function avanzarBoletaPaso1(){
 
 function manejarAdjuntoBoleta(file){
   if(!file) return;
+  const esPDF=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
+  const esImagen=(file.type||'').startsWith('image/');
+  if(!esImagen&&!esPDF){
+    limpiarAdjuntoBoleta();
+    return toast('Adjunt\u00e1 una imagen o un PDF v\u00e1lido','err');
+  }
+  if(file.size>10*1024*1024){
+    limpiarAdjuntoBoleta();
+    return toast('El archivo supera el l\u00edmite de 10 MB','err');
+  }
+  revocarAdjuntoBoleta();
   boletaArchivoNombre=file.name;
-  document.getElementById('bol-file-nombre').textContent=`Archivo adjunto: ${file.name}`;
+  boletaArchivoTipo=esPDF?'application/pdf':(file.type||'image/*');
+  boletaArchivoTamano=file.size||0;
+  boletaArchivoUrl=URL.createObjectURL(file);
+  const input=document.getElementById('bol-file');
+  if(input) input.value='';
+  actualizarEstadoAdjuntoBoleta();
   renderBoletaResumen();
+  toast('Adjunto cargado en la boleta','ok');
 }
 
 function avanzarBoletaPaso2(){
@@ -1585,13 +1614,18 @@ function renderBoletaResumen(){
   const resumen=document.getElementById('bol-resumen');
   const resumenFinal=document.getElementById('bol-resumen-final');
   if(!resumen||!resumenFinal) return;
-  const numero=document.getElementById('bol-numero').value.trim()||'\u2014';
-  const fecha=document.getElementById('bol-fecha').value||'\u2014';
-  const quien=document.getElementById('bol-quien').value.trim()||'Sin dato';
+  const numero=escapeHTML(document.getElementById('bol-numero').value.trim()||'\u2014');
+  const fecha=escapeHTML(document.getElementById('bol-fecha').value||'\u2014');
+  const quien=escapeHTML(document.getElementById('bol-quien').value.trim()||'Sin dato');
   const montoVal=document.getElementById('bol-monto').value;
   const monto=(montoVal&&parseFloat(montoVal)>0)?`$ ${formatearMonto(montoVal)}`:'Sin monto';
   const tipo=boletaTipo==='entrada'?'Entrada':boletaTipo==='salida'?'Salida':'Sin definir';
-  const archivo=boletaArchivoNombre||'Sin archivo';
+  const archivo=boletaArchivoNombre?escapeHTML(boletaArchivoNombre):'Sin archivo';
+  const respaldo=boletaArchivoNombre
+    ?'Adjunto listo para respaldar la boleta.'
+    :(montoVal&&parseFloat(montoVal)>0)
+      ?'La boleta avanza con respaldo por monto total.'
+      :'Falta adjuntar un archivo o cargar el monto.';
   const html=`<div class="bometa">
     <div class="bometaitem"><strong>Tipo</strong>${tipo}</div>
     <div class="bometaitem"><strong>Boleta</strong>${numero}</div>
@@ -1599,7 +1633,8 @@ function renderBoletaResumen(){
     <div class="bometaitem"><strong>Qui\u00e9n carga</strong>${quien}</div>
     <div class="bometaitem"><strong>Monto</strong>${monto}</div>
     <div class="bometaitem"><strong>Adjunto</strong>${archivo}</div>
-  </div>`;
+  </div>
+  <div class="${boletaArchivoNombre||(montoVal&&parseFloat(montoVal)>0)?'boresok':'boreswarn'}">${respaldo}</div>`;
   resumen.innerHTML=html;
   resumenFinal.innerHTML=html;
 }
@@ -1614,9 +1649,9 @@ function renderBoletaLineas(){
   lista.innerHTML=boletaLineas.map((item,idx)=>`
     <div class="boline">
       <div>
-        <strong>#${item.cod} \u2014 ${item.nombre}</strong>
+        <strong>#${item.cod} \u2014 ${escapeHTML(item.nombre)}</strong>
         <span>Cantidad: ${item.cantidad}</span>
-        <span>${item.nota?`Detalle: ${item.nota}`:'Sin detalle adicional'}</span>
+        <span>${item.nota?`Detalle: ${escapeHTML(item.nota)}`:'Sin detalle adicional'}</span>
       </div>
       <div style="text-align:right;">
         <div class="bocant ${boletaTipo==='entrada'?'v':'r'}">${boletaTipo==='entrada'?'+':'-'}${item.cantidad}</div>
@@ -1682,6 +1717,75 @@ function formatearMonto(valor){
   const num=parseFloat(valor);
   if(!isFinite(num)) return '0.00';
   return num.toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function escapeHTML(valor){
+  return String(valor??'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function formatearTamanoArchivo(bytes){
+  const total=Number(bytes)||0;
+  if(total<=0) return 'Sin tama\u00f1o';
+  if(total<1024) return `${total} B`;
+  if(total<1024*1024) return `${(total/1024).toFixed(1)} KB`;
+  return `${(total/(1024*1024)).toFixed(2)} MB`;
+}
+
+function revocarAdjuntoBoleta(){
+  if(boletaArchivoUrl){
+    URL.revokeObjectURL(boletaArchivoUrl);
+    boletaArchivoUrl='';
+  }
+}
+
+function limpiarAdjuntoBoleta(render=true){
+  revocarAdjuntoBoleta();
+  boletaArchivoNombre='';
+  boletaArchivoTipo='';
+  boletaArchivoTamano=0;
+  const file=document.getElementById('bol-file');
+  if(file) file.value='';
+  actualizarEstadoAdjuntoBoleta();
+  if(render) renderBoletaResumen();
+}
+
+function actualizarEstadoAdjuntoBoleta(){
+  const fileTxt=document.getElementById('bol-file-nombre');
+  const preview=document.getElementById('bol-file-preview');
+  if(!fileTxt||!preview) return;
+  if(!boletaArchivoNombre){
+    fileTxt.className='bofile';
+    fileTxt.textContent='Todav\u00eda no hay archivo adjunto.';
+    preview.className='bofileprev';
+    preview.innerHTML='';
+    return;
+  }
+
+  const esPDF=boletaArchivoTipo==='application/pdf'||/\.pdf$/i.test(boletaArchivoNombre);
+  const detalle=`${esPDF?'PDF':'Imagen'} · ${formatearTamanoArchivo(boletaArchivoTamano)}`;
+  fileTxt.className='bofile ok';
+  fileTxt.textContent=`Archivo adjunto: ${boletaArchivoNombre}`;
+  preview.className='bofileprev show';
+  preview.innerHTML=`<div class="bofilehead">
+    <div class="bofilemeta">
+      <div class="bofilettl">${escapeHTML(boletaArchivoNombre)}</div>
+      <div class="bofilesub">${detalle}</div>
+    </div>
+    <div class="bofileactions">
+      <button type="button" class="btn btn-ol" style="padding:8px 12px;font-size:12px;" onclick="document.getElementById('bol-file').click()">Reemplazar</button>
+      <button type="button" class="btn btn-ol" style="padding:8px 12px;font-size:12px;" onclick="limpiarAdjuntoBoleta()">Quitar</button>
+    </div>
+  </div>
+  <div class="bofilepreviewbox">${
+    esPDF
+      ?`<div class="bofileplaceholder">PDF listo para respaldar la boleta. Si quer\u00e9s cambiarlo, us\u00e1 Reemplazar.</div>`
+      :`<img src="${boletaArchivoUrl}" alt="Vista previa de la boleta">`
+  }</div>`;
 }
 
 // ═══════════════════════════════════
