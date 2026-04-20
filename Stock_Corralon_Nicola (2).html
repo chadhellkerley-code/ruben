@@ -8,6 +8,8 @@
 <link rel="shortcut icon" href="./favicon.svg">
 <meta name="theme-color" content="#1A1A1A">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
@@ -230,6 +232,27 @@ tr:hover td{background:#FEF6F0;}
 .bovacio{padding:18px;border:1px dashed var(--Gb);border-radius:12px;text-align:center;color:var(--G);background:white;}
 .boacc{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
 .boacc .btn{flex:1;min-width:180px;}
+.bolect{margin-top:14px;border:1px solid var(--Gb);border-radius:14px;background:white;padding:14px 16px;}
+.bolect.empty{background:#FCFCFA;color:var(--G);font-size:12px;line-height:1.6;}
+.bolecthead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.bolectttl{font-size:14px;font-weight:700;color:var(--K);}
+.bolectsub{font-size:12px;color:var(--G);line-height:1.5;margin-top:4px;}
+.bolectstatus{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:700;}
+.bolectstatus.loading{background:var(--Nc);color:var(--Nd);}
+.bolectstatus.ok{background:var(--Vc);color:#1b5e20;}
+.bolectstatus.warn{background:var(--Ac);color:#7f3d00;}
+.bolectstatus.err{background:var(--Rc);color:#7B0000;}
+.bolectgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px;}
+.bolectmeta{background:var(--Gc);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--G);}
+.bolectmeta strong{display:block;font-size:13px;color:var(--K);margin-bottom:3px;}
+.bolectactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.bolectlist{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.bolectitem{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 12px;border:1px solid var(--Gb);border-radius:12px;background:#FCFCFA;}
+.bolectitem strong{display:block;font-size:13px;color:var(--K);line-height:1.4;}
+.bolectitem span{display:block;font-size:12px;color:var(--G);line-height:1.5;margin-top:4px;}
+.bolectqty{font-size:16px;font-weight:700;color:var(--N);white-space:nowrap;}
+.bolecthint{margin-top:12px;font-size:12px;color:var(--G);line-height:1.6;}
+.bolectraw{margin-top:12px;padding:12px;border:1px dashed var(--Gb);border-radius:12px;background:#FCFCFA;font-size:12px;line-height:1.55;color:var(--K);white-space:pre-wrap;max-height:220px;overflow:auto;font-family:Consolas,'Courier New',monospace;}
 
 /* TOAST */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 26px;border-radius:var(--r);font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:all .25s;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.2);}
@@ -563,6 +586,7 @@ tr:hover td{background:#FEF6F0;}
           <div class="bofileprev" id="bol-file-preview"></div>
         </div>
       </div>
+      <div class="bolect empty" id="bol-lectura">Cuando adjuntes una boleta, ac&#225; se va a mostrar el detalle detectado para revisar antes de procesarla.</div>
       <div class="boacc">
         <button class="btn btn-ol" onclick="volverBoletaPaso(1)">Volver</button>
         <button class="btn btn-na" onclick="avanzarBoletaPaso2()">Avanzar</button>
@@ -577,6 +601,7 @@ tr:hover td{background:#FEF6F0;}
         </div>
       </div>
       <div class="bores" id="bol-resumen-final"></div>
+      <div class="bolect empty" id="bol-lectura-final">La lectura del archivo tambi&#233;n se refleja ac&#225; para revisar qu&#233; se va a sumar o descontar.</div>
       <div class="fgrid">
         <div class="fgrp">
           <label>Buscar producto</label>
@@ -967,6 +992,11 @@ const KP = LEGACY_KEYS.prods;
 const KMN = LEGACY_KEYS.mins;
 const KA = LEGACY_KEYS.audit;
 const KC = LEGACY_KEYS.cierres;
+const OCR_STOPWORDS = new Set(['DE','DEL','LA','EL','LOS','LAS','UN','UNA','Y','CON','SIN','PARA','POR','AL','A','EN','X','MT','MTS','KG','KGS','GR','L','LT','LTS','CM','CMS']);
+
+if(window.pdfjsLib&&pdfjsLib.GlobalWorkerOptions){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
 
 function normTxt(v){
   return String(v||'').trim().replace(/\s+/g,' ').toUpperCase();
@@ -1020,6 +1050,155 @@ function normalizarProd(prod){
 
 function formatCod(cod){
   return `C${String(cod).padStart(4,'0')}`;
+}
+
+function txtBusqueda(v){
+  return String(v||'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function tokensBusqueda(v){
+  return txtBusqueda(v)
+    .split(' ')
+    .filter(tok=>tok&&(tok.length>2||/^\d/.test(tok))&&!OCR_STOPWORDS.has(tok));
+}
+
+function parseNumeroFlexible(valor){
+  let limpio=String(valor||'').replace(/[^\d.,-]/g,'').trim();
+  if(!limpio) return 0;
+  const ultimaComa=limpio.lastIndexOf(',');
+  const ultimoPunto=limpio.lastIndexOf('.');
+  const decimalPos=Math.max(ultimaComa,ultimoPunto);
+  if(decimalPos>-1&&limpio.length-decimalPos-1===2){
+    const enteros=limpio.slice(0,decimalPos).replace(/[.,]/g,'');
+    const decimales=limpio.slice(decimalPos+1).replace(/[^\d]/g,'').slice(0,2);
+    limpio=`${enteros}.${decimales}`;
+  }else{
+    limpio=limpio.replace(/[.,]/g,'');
+  }
+  const num=parseFloat(limpio);
+  return isFinite(num)?num:0;
+}
+
+function normalizarFechaDetectada(valor){
+  const txt=String(valor||'').trim();
+  if(!txt) return '';
+  let match=txt.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
+  if(match){
+    const [,yy,mm,dd]=match;
+    return `${yy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+  }
+  match=txt.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+  if(!match) return '';
+  let [,dd,mm,yy]=match;
+  if(yy.length===2) yy=`20${yy}`;
+  return `${yy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+}
+
+function resumirTextoLecturaBoleta(texto){
+  return String(texto||'')
+    .split(/\r?\n/)
+    .map(linea=>linea.trim())
+    .filter(Boolean)
+    .slice(0,12)
+    .join('\n')
+    .slice(0,1000);
+}
+
+function extraerDatosGeneralesBoletaDesdeTexto(texto){
+  const original=String(texto||'');
+  const numeroMatch=original.match(/\b(?:BOLETA|FACTURA|REMITO|TICKET|COMP(?:ROBANTE)?|NRO|N[°º]?|NUM(?:ERO)?)\s*(?:N[°ºRO-]*)?\s*[:#-]?\s*([A-Z0-9-]{3,})/i);
+  const fechaMatch=original.match(/\b(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})\b/);
+  const candidatosMonto=[...original.matchAll(/(?:TOTAL|IMPORTE|MONTO|A PAGAR|TOTAL FINAL)?[^\d$]{0,12}\$?\s*([\d][\d.\s,]{0,18}\d)/ig)]
+    .map(match=>({
+      valor:parseNumeroFlexible(match[1]),
+      prioridad:/(TOTAL|IMPORTE|MONTO|A PAGAR|TOTAL FINAL)/i.test(match[0])?1:0
+    }))
+    .filter(item=>item.valor>0);
+  candidatosMonto.sort((a,b)=>(b.prioridad-a.prioridad)||(b.valor-a.valor));
+  return {
+    numero:numeroMatch?numeroMatch[1].trim():'',
+    fecha:fechaMatch?normalizarFechaDetectada(fechaMatch[1]):'',
+    monto:candidatosMonto[0]?.valor||0
+  };
+}
+
+function extraerCantidadDetectada(texto,prod){
+  const tokens=txtBusqueda(texto).split(' ').filter(Boolean);
+  const numerosProd=new Set(tokensBusqueda(prod?.n||'').filter(tok=>/^\d+$/.test(tok)).map(tok=>Number(tok)));
+  const candidatos=tokens
+    .map((tok,idx)=>({tok,idx,num:Number(tok)}))
+    .filter(item=>/^\d{1,3}$/.test(item.tok)&&item.num>0&&item.num<=999);
+  const temprano=candidatos.find(item=>item.idx<=2&&!numerosProd.has(item.num));
+  if(temprano) return temprano.num;
+  const libre=candidatos.find(item=>!numerosProd.has(item.num));
+  return libre?libre.num:1;
+}
+
+function buscarProductoBoletaEnTexto(texto){
+  const lineaNorm=txtBusqueda(texto);
+  const lineaTokens=new Set(tokensBusqueda(texto));
+  if(!lineaNorm||lineaTokens.size<2) return null;
+  let mejor=null;
+  PRODS.forEach(prod=>{
+    const variantes=[prod.n,...(Array.isArray(prod.syn)?prod.syn:[])];
+    variantes.forEach(alias=>{
+      const aliasNorm=txtBusqueda(alias);
+      const aliasTokens=tokensBusqueda(alias);
+      if(!aliasNorm||aliasTokens.length<2) return;
+      const coincidencias=aliasTokens.filter(tok=>lineaTokens.has(tok));
+      const contiene=lineaNorm.includes(aliasNorm)&&aliasNorm.length>=8;
+      let score=coincidencias.length/aliasTokens.length;
+      if(contiene) score=Math.max(score,0.99);
+      if(coincidencias.length>=2) score+=Math.min(0.16,coincidencias.join('').length/42);
+      if(score<0.66&&!(contiene&&coincidencias.length>=2)) return;
+      if(!mejor||score>mejor.score){
+        mejor={prod,score,coincidencias,aliasNorm};
+      }
+    });
+  });
+  return mejor;
+}
+
+function detectarItemsBoletaDesdeTexto(texto){
+  const lineas=String(texto||'')
+    .split(/\r?\n/)
+    .map(linea=>linea.replace(/\s+/g,' ').trim())
+    .filter(linea=>linea&&linea.length>=5);
+  const mapa=new Map();
+  for(let i=0;i<lineas.length;i++){
+    const actual=lineas[i];
+    const siguiente=lineas[i+1]||'';
+    const contexto=siguiente&&siguiente.length<=38?`${actual} ${siguiente}`:actual;
+    const match=buscarProductoBoletaEnTexto(contexto);
+    if(!match) continue;
+    const qty=Math.max(1,extraerCantidadDetectada(contexto,match.prod));
+    const clave=String(match.prod.c);
+    const previo=mapa.get(clave);
+    const item={
+      cod:match.prod.c,
+      nombre:match.prod.n,
+      cantidad:qty,
+      nota:'Detectado desde la boleta',
+      textoOriginal:contexto,
+      confianza:Number(Math.min(match.score,1).toFixed(2))
+    };
+    if(previo){
+      previo.cantidad+=qty;
+      if(item.confianza>(previo.confianza||0)){
+        previo.confianza=item.confianza;
+        previo.textoOriginal=item.textoOriginal;
+      }
+    }else{
+      mapa.set(clave,item);
+    }
+  }
+  return Array.from(mapa.values()).sort((a,b)=>(b.confianza||0)-(a.confianza||0));
 }
 
 // ═══════════════════════════════════
@@ -1202,8 +1381,11 @@ let auditLog = [];
 let cierres = [];
 let rol   = null, selrol = null;
 let stFilt='todos', stBus='', histBus='', histMes=new Date().toISOString().slice(0,7), histTipo='todos', prodBus='', catFiltro='todas', catVista='nombres', catEditCod=null;
-let boletaTipo='', boletaArchivoNombre='', boletaArchivoTipo='', boletaArchivoTamano=0, boletaArchivoUrl='';
+let boletaTipo='', boletaArchivoNombre='', boletaArchivoTipo='', boletaArchivoTamano=0, boletaArchivoUrl='', boletaArchivoFile=null;
 let boletaLineas=[], boletaPaso=1;
+let boletaLecturaEstado='sin-lectura', boletaLecturaTexto='', boletaLecturaItems=[];
+let boletaLecturaNumero='', boletaLecturaFecha='', boletaLecturaMonto=0, boletaLecturaError='';
+let boletaLecturaProgreso='', boletaLecturaAplicada=false, boletaLecturaToken=0, boletaLecturaAutoAplicar=false;
 let saveT=null;
 let fbApp=null, db=null, estadoRef=null, estadoRemotoCache=null;
 let remotoInicializado=false, remotoSuscripto=false;
@@ -1901,11 +2083,233 @@ function actuPrev(t){
 // ═══════════════════════════════════
 // BOLETA
 // ═══════════════════════════════════
+function etiquetaEstadoLecturaBoleta(){
+  if(boletaLecturaEstado==='procesando') return boletaLecturaProgreso||'Procesando archivo...';
+  if(boletaLecturaEstado==='lista') return 'Lectura lista para aplicar en la boleta.';
+  if(boletaLecturaEstado==='sin-coincidencias') return 'Se leyó texto, pero no hubo coincidencias seguras con el stock.';
+  if(boletaLecturaEstado==='error') return boletaLecturaError||'No se pudo leer la boleta.';
+  return 'Sin lectura automática.';
+}
+
+function claseEstadoLecturaBoleta(){
+  if(boletaLecturaEstado==='procesando') return 'loading';
+  if(boletaLecturaEstado==='lista') return 'ok';
+  if(boletaLecturaEstado==='sin-coincidencias') return 'warn';
+  if(boletaLecturaEstado==='error') return 'err';
+  return 'warn';
+}
+
+function resetLecturaBoleta(preservarAutoAplicar=false){
+  boletaLecturaEstado='sin-lectura';
+  boletaLecturaTexto='';
+  boletaLecturaItems=[];
+  boletaLecturaNumero='';
+  boletaLecturaFecha='';
+  boletaLecturaMonto=0;
+  boletaLecturaError='';
+  boletaLecturaProgreso='';
+  boletaLecturaAplicada=false;
+  if(!preservarAutoAplicar) boletaLecturaAutoAplicar=false;
+  renderBoletaLectura();
+}
+
+function actualizarProgresoLecturaBoleta(status,progress){
+  const estadoTxt=String(status||'').trim();
+  const mapa={
+    'loading tesseract core':'Cargando motor OCR',
+    'initializing tesseract':'Inicializando OCR',
+    'loading language traineddata':'Cargando idioma',
+    'initializing api':'Preparando lectura',
+    'recognizing text':'Leyendo texto de la boleta'
+  };
+  const base=mapa[estadoTxt.toLowerCase()]||estadoTxt||'Procesando archivo';
+  const pct=Number(progress);
+  boletaLecturaEstado='procesando';
+  boletaLecturaProgreso=Number.isFinite(pct)&&pct>0?`${base} (${Math.round(pct*100)}%)`:base;
+  renderBoletaLectura();
+}
+
+async function leerOCRDesdeFuenteBoleta(source){
+  if(!window.Tesseract) throw new Error('No se cargo el lector OCR.');
+  const result=await Tesseract.recognize(source,'spa',{
+    logger:msg=>actualizarProgresoLecturaBoleta(msg?.status,msg?.progress)
+  });
+  return String(result?.data?.text||'').trim();
+}
+
+async function leerTextoPDFBoleta(file){
+  if(!window.pdfjsLib) throw new Error('No se pudo cargar el lector de PDF.');
+  const buffer=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buffer)}).promise;
+  let texto='';
+  const paginas=Math.min(pdf.numPages||1,2);
+  for(let pagina=1;pagina<=paginas;pagina++){
+    boletaLecturaEstado='procesando';
+    boletaLecturaProgreso=`Leyendo PDF (${pagina}/${paginas})`;
+    renderBoletaLectura();
+    const page=await pdf.getPage(pagina);
+    const contenido=await page.getTextContent();
+    const textoPlano=contenido.items.map(item=>item.str).join(' ').replace(/\s+/g,' ').trim();
+    if(textoPlano) texto+=`${textoPlano}\n`;
+    if(textoPlano.length<80){
+      const viewport=page.getViewport({scale:2});
+      const canvas=document.createElement('canvas');
+      const ctx=canvas.getContext('2d');
+      canvas.width=viewport.width;
+      canvas.height=viewport.height;
+      await page.render({canvasContext:ctx,viewport}).promise;
+      const ocrTexto=await leerOCRDesdeFuenteBoleta(canvas.toDataURL('image/png'));
+      if(ocrTexto) texto+=`${ocrTexto}\n`;
+    }
+  }
+  return texto.trim();
+}
+
+async function extraerTextoArchivoBoleta(file){
+  const esPDF=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
+  return esPDF?leerTextoPDFBoleta(file):leerOCRDesdeFuenteBoleta(file);
+}
+
+function crearLineasDesdeLecturaBoleta(){
+  return normalizarBoletaItems(boletaLecturaItems.map(item=>({
+    cod:item.cod,
+    nombre:item.nombre,
+    cantidad:Math.max(1,Math.round(Number(item.cantidad)||1)),
+    nota:[item.nota,item.textoOriginal&&normTxt(item.textoOriginal)!==normTxt(item.nombre)?`Leido: ${item.textoOriginal}`:''].filter(Boolean).join(' | '),
+    textoOriginal:item.textoOriginal,
+    confianza:item.confianza
+  })));
+}
+
+function aplicarLecturaBoleta(reemplazar=true){
+  const nuevas=crearLineasDesdeLecturaBoleta().map(item=>({
+    cod:item.cod,
+    nombre:item.nombre,
+    cantidad:item.cantidad,
+    nota:item.nota
+  }));
+  if(!nuevas.length) return toast('No hay productos detectados para cargar','err');
+  boletaLineas=reemplazar?nuevas:boletaLineas.concat(nuevas);
+  boletaLecturaAplicada=true;
+  boletaLecturaAutoAplicar=false;
+  renderBoletaUI();
+  toast(`Se cargaron ${nuevas.length} producto(s) desde la boleta`,'ok');
+}
+
+async function iniciarLecturaBoleta(){
+  if(!boletaArchivoFile) return toast('Adjunta primero una boleta','err');
+  const token=++boletaLecturaToken;
+  boletaLecturaEstado='procesando';
+  boletaLecturaTexto='';
+  boletaLecturaItems=[];
+  boletaLecturaNumero='';
+  boletaLecturaFecha='';
+  boletaLecturaMonto=0;
+  boletaLecturaError='';
+  boletaLecturaAplicada=false;
+  boletaLecturaProgreso='Preparando lectura...';
+  renderBoletaLectura();
+  try{
+    const texto=await extraerTextoArchivoBoleta(boletaArchivoFile);
+    if(token!==boletaLecturaToken) return;
+    const datos=extraerDatosGeneralesBoletaDesdeTexto(texto);
+    const items=detectarItemsBoletaDesdeTexto(texto);
+    boletaLecturaTexto=texto.trim();
+    boletaLecturaItems=normalizarBoletaItems(items);
+    boletaLecturaNumero=datos.numero;
+    boletaLecturaFecha=datos.fecha;
+    boletaLecturaMonto=datos.monto;
+    boletaLecturaEstado=boletaLecturaItems.length?'lista':(boletaLecturaTexto?'sin-coincidencias':'error');
+    boletaLecturaProgreso='';
+    if(!boletaLecturaTexto&&boletaLecturaEstado==='error') boletaLecturaError='No se pudo interpretar texto del archivo.';
+    const montoInput=document.getElementById('bol-monto');
+    if(montoInput&&!parseFloat(montoInput.value)&&boletaLecturaMonto>0){
+      montoInput.value=boletaLecturaMonto.toFixed(2);
+      renderBoletaResumen();
+    }
+    if(boletaLecturaItems.length&&boletaLecturaAutoAplicar){
+      boletaLineas=crearLineasDesdeLecturaBoleta().map(item=>({
+        cod:item.cod,
+        nombre:item.nombre,
+        cantidad:item.cantidad,
+        nota:item.nota
+      }));
+      boletaLecturaAplicada=true;
+      boletaLecturaAutoAplicar=false;
+      toast(`Se detectaron ${boletaLineas.length} producto(s) y ya quedaron cargados en la boleta`,'info');
+    }
+    renderBoletaUI();
+  }catch(err){
+    if(token!==boletaLecturaToken) return;
+    boletaLecturaEstado='error';
+    boletaLecturaProgreso='';
+    boletaLecturaError=err?.message||'No se pudo leer la boleta.';
+    renderBoletaUI();
+    toast('No se pudo leer la boleta adjunta','err');
+  }
+}
+
+function renderBoletaLectura(){
+  const paneles=['bol-lectura','bol-lectura-final'].map(id=>document.getElementById(id)).filter(Boolean);
+  if(!paneles.length) return;
+  if(!boletaArchivoNombre&&!boletaLecturaTexto&&!boletaLecturaError&&boletaLecturaEstado==='sin-lectura'){
+    paneles.forEach(el=>{
+      el.className='bolect empty';
+      el.innerHTML='Cuando adjuntes una boleta, ac&aacute; se va a mostrar el detalle detectado para revisar antes de procesarla.';
+    });
+    return;
+  }
+  const montoDetectado=boletaLecturaMonto>0?`$ ${formatearMonto(boletaLecturaMonto)}`:'No detectado';
+  const fechaDetectada=boletaLecturaFecha||'No detectada';
+  const numeroDetectado=boletaLecturaNumero||'No detectado';
+  const accionStock=boletaTipo==='entrada'?'se sumar&aacute;n':boletaTipo==='salida'?'se descontar&aacute;n':'se aplicar&aacute;n';
+  const itemsHTML=boletaLecturaItems.length
+    ?`<div class="bolectlist">${boletaLecturaItems.map(item=>`
+      <div class="bolectitem">
+        <div>
+          <strong>#${item.cod} - ${escapeHTML(item.nombre)}</strong>
+          <span>${item.textoOriginal?`Le&iacute;do: ${escapeHTML(item.textoOriginal)}`:'Coincidencia detectada en la boleta'}</span>
+          <span>Confianza: ${item.confianza!=null?`${Math.round((Number(item.confianza)||0)*100)}%`:'Sin dato'}</span>
+        </div>
+        <div class="bolectqty">${boletaTipo==='salida'?'-':'+'}${item.cantidad}</div>
+      </div>`).join('')}</div>`
+    :'';
+  const acciones=boletaArchivoNombre?`<div class="bolectactions">
+      <button type="button" class="btn btn-ol" onclick="iniciarLecturaBoleta()" ${boletaLecturaEstado==='procesando'?'disabled':''}>Leer de nuevo</button>
+      ${boletaLecturaItems.length?`<button type="button" class="btn btn-na" onclick="aplicarLecturaBoleta(true)" ${boletaLecturaEstado==='procesando'?'disabled':''}>Usar lectura en la boleta</button>`:''}
+    </div>`:'';
+  const html=`<div class="bolecthead">
+      <div>
+        <div class="bolectttl">Lectura autom&aacute;tica de la boleta</div>
+        <div class="bolectsub">Se analiza el archivo adjunto para mostrar el detalle le&iacute;do antes de confirmar.</div>
+      </div>
+      <div class="badge ${boletaLecturaEstado==='lista'?'bge':boletaLecturaEstado==='error'?'bgs':'bga'}">${boletaLecturaEstado==='lista'?'Lista':boletaLecturaEstado==='procesando'?'Procesando':boletaLecturaEstado==='error'?'Error':'Revisar'}</div>
+    </div>
+    <div class="bolectstatus ${claseEstadoLecturaBoleta()}">${escapeHTML(etiquetaEstadoLecturaBoleta())}</div>
+    <div class="bolectgrid">
+      <div class="bolectmeta"><strong>N&deg; detectado</strong>${escapeHTML(numeroDetectado)}</div>
+      <div class="bolectmeta"><strong>Fecha detectada</strong>${escapeHTML(fechaDetectada)}</div>
+      <div class="bolectmeta"><strong>Monto detectado</strong>${escapeHTML(montoDetectado)}</div>
+      <div class="bolectmeta"><strong>Productos detectados</strong>${boletaLecturaItems.length}</div>
+    </div>
+    ${acciones}
+    ${itemsHTML}
+    <div class="bolecthint">${boletaLecturaItems.length?`Al confirmar esta boleta, los productos detectados ${accionStock} del stock seg&uacute;n el tipo elegido.`:'Si no ves coincidencias, pod&eacute;s seguir cargando los productos a mano.'}${boletaLecturaAplicada?' Ya quedaron cargados en la boleta para revisar antes de confirmar.':''}</div>
+    ${boletaLecturaTexto?`<div class="bolectraw">${escapeHTML(resumirTextoLecturaBoleta(boletaLecturaTexto))}</div>`:''}`;
+  paneles.forEach(el=>{
+    el.className='bolect';
+    el.innerHTML=html;
+  });
+}
+
 function reiniciarBoleta(){
+  boletaLecturaToken+=1;
   limpiarAdjuntoBoleta(false);
   boletaTipo='';
   boletaLineas=[];
   boletaPaso=1;
+  boletaArchivoFile=null;
+  resetLecturaBoleta();
   ['bol-numero','bol-quien','bol-monto','bol-bus','bol-qty','bol-item-obs'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.value='';
@@ -1929,6 +2333,7 @@ function selBoletaTipo(tipo){
 
 function actualizarResumenBoleta(){
   renderBoletaResumen();
+  renderBoletaLectura();
 }
 
 function volverBoletaPaso(paso){
@@ -1960,15 +2365,20 @@ function manejarAdjuntoBoleta(file){
     return toast('El archivo supera el l\u00edmite de 10 MB','err');
   }
   revocarAdjuntoBoleta();
+  boletaLecturaToken+=1;
+  boletaLecturaAutoAplicar=boletaLecturaAplicada||!boletaLineas.length;
+  boletaArchivoFile=file;
   boletaArchivoNombre=file.name;
   boletaArchivoTipo=esPDF?'application/pdf':(file.type||'image/*');
   boletaArchivoTamano=file.size||0;
   boletaArchivoUrl=URL.createObjectURL(file);
+  resetLecturaBoleta(true);
   const input=document.getElementById('bol-file');
   if(input) input.value='';
   actualizarEstadoAdjuntoBoleta();
   renderBoletaResumen();
   toast('Adjunto cargado en la boleta','ok');
+  iniciarLecturaBoleta();
 }
 
 function avanzarBoletaPaso2(){
@@ -2075,6 +2485,7 @@ function renderBoletaUI(){
   btn.className=`btn ${isEnt?'btn-v':isSal?'btn-r':'btn-na'}`;
   btn.textContent=isEnt?'Confirmar entrada con boleta':isSal?'Confirmar salida con boleta':'Confirmar boleta';
   renderBoletaResumen();
+  renderBoletaLectura();
   renderBoletaLineas();
 }
 
@@ -2100,6 +2511,15 @@ function confirmarBoleta(){
     textoOriginal:item.nombre,
     confianza:null
   })));
+  const lecturaEstadoFinal=!boletaArchivoNombre
+    ?'manual'
+    :boletaLecturaEstado==='lista'
+      ?(boletaLecturaAplicada?'aplicada':'detectada')
+      :boletaLecturaEstado==='sin-coincidencias'
+        ?'sin-coincidencias'
+        :boletaLecturaEstado==='error'
+          ?'error'
+          :'pendiente';
   const boletaRegistro=normalizarBoletaGuardada({
     id:boletaId,
     tipo:boletaTipo,
@@ -2113,9 +2533,9 @@ function confirmarBoleta(){
       tamano:boletaArchivoTamano,
       guardado:false
     },
-    lecturaEstado:boletaArchivoNombre?'pendiente':'manual',
-    ocrTexto:'',
-    ocrItems:[],
+    lecturaEstado:lecturaEstadoFinal,
+    ocrTexto:boletaLecturaTexto,
+    ocrItems:boletaLecturaItems,
     items:itemsBoleta,
     createdAt:Date.now(),
     updatedAt:Date.now(),
@@ -2178,14 +2598,20 @@ function revocarAdjuntoBoleta(){
 }
 
 function limpiarAdjuntoBoleta(render=true){
+  boletaLecturaToken+=1;
   revocarAdjuntoBoleta();
+  boletaArchivoFile=null;
   boletaArchivoNombre='';
   boletaArchivoTipo='';
   boletaArchivoTamano=0;
+  resetLecturaBoleta();
   const file=document.getElementById('bol-file');
   if(file) file.value='';
   actualizarEstadoAdjuntoBoleta();
-  if(render) renderBoletaResumen();
+  if(render){
+    renderBoletaResumen();
+    renderBoletaLectura();
+  }
 }
 
 function actualizarEstadoAdjuntoBoleta(){
@@ -2197,6 +2623,7 @@ function actualizarEstadoAdjuntoBoleta(){
     fileTxt.textContent='Todav\u00eda no hay archivo adjunto.';
     preview.className='bofileprev';
     preview.innerHTML='';
+    renderBoletaLectura();
     return;
   }
 
@@ -2220,6 +2647,7 @@ function actualizarEstadoAdjuntoBoleta(){
       ?`<div class="bofileplaceholder">PDF listo para respaldar la boleta. Si quer\u00e9s cambiarlo, us\u00e1 Reemplazar.</div>`
       :`<img src="${boletaArchivoUrl}" alt="Vista previa de la boleta">`
   }</div>`;
+  renderBoletaLectura();
 }
 
 // ═══════════════════════════════════
