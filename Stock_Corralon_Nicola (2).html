@@ -95,8 +95,10 @@ body{font-family:var(--f);background:#F0EDE8;color:var(--K);font-size:14px;min-h
 /* METRICS */
 .mets{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:22px;}
 .met{background:var(--W);border:1px solid var(--Gb);border-radius:var(--rl);padding:15px 17px;box-shadow:var(--sh);}
+.met.stockwide{grid-column:span 2;min-width:0;}
 .metlbl{font-size:11px;color:var(--G);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
 .metval{font-size:26px;font-weight:700;}
+.metval.stockwide{font-size:clamp(24px,2.4vw,28px);letter-spacing:-.03em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .metval.na{color:var(--N);}.metval.v{color:var(--V);}.metval.r{color:var(--R);}.metval.a{color:var(--A);}.metval.g{color:var(--G);}
 
 /* PANEL */
@@ -350,6 +352,8 @@ tr:hover td{background:#FEF6F0;}
 @media(max-width:640px){
   .fgrid{grid-template-columns:1fr;}
   .mets{grid-template-columns:1fr 1fr;}
+  .met.stockwide{grid-column:1 / -1;}
+  .metval.stockwide{font-size:clamp(22px,6vw,26px);}
   .hdrtit{font-size:14px;}
   .sec{padding:14px;}
   .panel{padding:16px;}
@@ -452,7 +456,7 @@ tr:hover td{background:#FEF6F0;}
     <div class="met"><div class="metlbl">Stock bajo</div><div class="metval a" id="m-bajo">0</div></div>
     <div class="met"><div class="metlbl">Sin stock</div><div class="metval r" id="m-cero">0</div></div>
     <div class="met"><div class="metlbl">Movimientos</div><div class="metval g" id="m-movs">0</div></div>
-    <div class="met"><div class="metlbl">Valor total stock</div><div class="metval na" id="m-stock-value">$ 0.00</div></div>
+    <div class="met stockwide"><div class="metlbl">Valor total stock</div><div class="metval na stockwide" id="m-stock-value">$ 0.00</div></div>
   </div>
   <div class="panel">
     <div class="ptit"><div class="punto pna"></div>Inventario Actual</div>
