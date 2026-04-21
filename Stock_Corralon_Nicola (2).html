@@ -222,13 +222,21 @@ tr:hover td{background:#FEF6F0;}
 .bofileplaceholder{padding:18px 16px;font-size:12px;color:var(--G);line-height:1.6;background:#FCFCFA;}
 .boresok{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--Vc);color:#1b5e20;font-size:12px;font-weight:600;}
 .boreswarn{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--Ac);color:#7f3d00;font-size:12px;font-weight:600;}
+.boeditbar{display:none;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #FCD34D;border-radius:12px;background:var(--Ac);color:#7f3d00;margin-bottom:14px;flex-wrap:wrap;}
+.boeditbar.show{display:flex;}
+.boeditbar strong{display:block;font-size:13px;color:var(--K);margin-bottom:3px;}
+.boeditbar span{font-size:12px;line-height:1.5;}
 .bolist{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
 .boline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid var(--Gb);border-radius:12px;background:white;}
+.boline.editing{border-color:var(--N);box-shadow:0 0 0 3px rgba(232,98,10,.10);}
 .boline strong{display:block;font-size:13px;margin-bottom:4px;}
 .boline span{font-size:12px;color:var(--G);line-height:1.5;}
+.boestado{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:var(--Nc);color:var(--Nd);font-size:11px;font-weight:700;margin-bottom:8px;}
 .bocant{font-size:16px;font-weight:700;white-space:nowrap;}
 .bocant.v{color:var(--V);}
 .bocant.r{color:var(--R);}
+.boitemacc{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.boiconbtn{min-width:38px;padding:6px 10px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;}
 .bovacio{padding:18px;border:1px dashed var(--Gb);border-radius:12px;text-align:center;color:var(--G);background:white;}
 .boacc{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
 .boacc .btn{flex:1;min-width:180px;}
@@ -503,13 +511,13 @@ tr:hover td{background:#FEF6F0;}
         <thead><tr>
           <th style="width:50px">C&#243;d.</th>
           <th>Art&#237;culo</th>
+          <th style="text-align:right">Stock Actual</th>
+          <th style="text-align:right">Precio Unit.</th>
+          <th style="text-align:right">Precio Total</th>
           <th style="text-align:right">Inicial</th>
           <th style="text-align:right">Entradas</th>
           <th style="text-align:right">Salidas</th>
-          <th style="text-align:right">Stock Actual</th>
           <th style="text-align:right" title="Alerta m&#237;nima">M&#237;n.</th>
-          <th style="text-align:right">Precio Unit.</th>
-          <th style="text-align:right">Precio Total</th>
           <th id="th-edit" style="display:none;text-align:center">Editar ini.</th>
         </tr></thead>
         <tbody id="tbody-stk"></tbody>
@@ -604,7 +612,7 @@ tr:hover td{background:#FEF6F0;}
       <div class="bolect empty" id="bol-lectura-final">La lectura del archivo tambi&#233;n se refleja ac&#225; para revisar qu&#233; se va a sumar o descontar.</div>
       <div class="fgrid">
         <div class="fgrp">
-          <label>Buscar producto</label>
+          <label id="bol-bus-label">Buscar producto</label>
           <input type="text" id="bol-bus" placeholder="Escrib&#237; para filtrar..." oninput="filtrarSel(this.value,'bol-sel')">
         </div>
         <div class="fgrp">
@@ -624,8 +632,10 @@ tr:hover td{background:#FEF6F0;}
           <input type="text" id="bol-item-obs" placeholder="Opcional" onkeydown="if(event.key==='Enter')agregarLineaBoleta()">
         </div>
       </div>
+      <div class="boeditbar" id="bol-edit-state"></div>
       <div class="boacc">
-        <button class="btn btn-k" onclick="agregarLineaBoleta()">Agregar producto</button>
+        <button class="btn btn-k" id="bol-item-submit" onclick="agregarLineaBoleta()">Agregar producto</button>
+        <button class="btn btn-ol" id="bol-item-cancel" onclick="cancelarEdicionBoleta()" style="display:none;">Cancelar edici&#243;n</button>
       </div>
       <div class="bolist" id="bol-lista"></div>
       <div class="boacc">
@@ -1382,7 +1392,7 @@ let cierres = [];
 let rol   = null, selrol = null;
 let stFilt='todos', stBus='', histBus='', histMes=new Date().toISOString().slice(0,7), histTipo='todos', prodBus='', catFiltro='todas', catVista='nombres', catEditCod=null;
 let boletaTipo='', boletaArchivoNombre='', boletaArchivoTipo='', boletaArchivoTamano=0, boletaArchivoUrl='', boletaArchivoFile=null;
-let boletaLineas=[], boletaPaso=1;
+let boletaLineas=[], boletaPaso=1, boletaEditIdx=-1;
 let boletaLecturaEstado='sin-lectura', boletaLecturaTexto='', boletaLecturaItems=[];
 let boletaLecturaNumero='', boletaLecturaFecha='', boletaLecturaMonto=0, boletaLecturaError='';
 let boletaLecturaProgreso='', boletaLecturaAplicada=false, boletaLecturaToken=0, boletaLecturaAutoAplicar=false;
@@ -1950,13 +1960,13 @@ function renderStock(){
     return `<tr class="${alt}">
       <td class="tdcod">${p.c}</td>
       <td style="max-width:340px;font-size:13px;">${p.n}</td>
+      <td class="tdnum ${cls}" style="font-size:15px;font-weight:700;">${t}</td>
+      <td style="text-align:right">${priceCell}</td>
+      <td class="tdnum ${total>0?'v':'na'}">$ ${formatearMonto(total)}</td>
       <td class="tdnum na">${s.inicial||0}</td>
       <td class="tdnum v">+${s.entradas||0}</td>
       <td class="tdnum r">-${s.salidas||0}</td>
-      <td class="tdnum ${cls}" style="font-size:15px;font-weight:700;">${t}</td>
       <td style="text-align:right"><input type="number" class="minp" value="${mn}" min="0" ${ed?'':'disabled'} title="M\u00ednimo de alerta" onchange="setMin(${p.c},this.value)"></td>
-      <td style="text-align:right">${priceCell}</td>
-      <td class="tdnum ${total>0?'v':'na'}">$ ${formatearMonto(total)}</td>
       ${editCell}
     </tr>`;
   }).join('');
@@ -2057,12 +2067,16 @@ function armarSelects(){
   ['ent-sel','sal-sel','bol-sel'].forEach(id=>{const el=document.getElementById(id);if(el) el.innerHTML=opts;});
 }
 
+function normalizarBusqueda(txt){
+  return String(txt||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+
 function filtrarSel(q,selId){
   const sel=document.getElementById(selId);
-  const lq=q.toLowerCase();
+  const lq=normalizarBusqueda(q);
   const t=selId.startsWith('ent')?'ent':selId.startsWith('sal')?'sal':'bol';
   sel.innerHTML='<option value="">\u2014 Seleccion\u00e1 \u2014</option>'+
-    PRODS.filter(p=>!lq||p.n.toLowerCase().includes(lq)||String(p.c).includes(lq))
+    PRODS.filter(p=>!lq||normalizarBusqueda(p.n).includes(lq)||String(p.c).includes(lq))
       .map(p=>`<option value="${p.c}">[${p.c}] ${p.n}</option>`).join('');
   actuPrev(t);
 }
@@ -2310,6 +2324,7 @@ function reiniciarBoleta(){
   boletaPaso=1;
   boletaArchivoFile=null;
   resetLecturaBoleta();
+  boletaEditIdx=-1;
   ['bol-numero','bol-quien','bol-monto','bol-bus','bol-qty','bol-item-obs'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.value='';
@@ -2327,6 +2342,10 @@ function reiniciarBoleta(){
 function selBoletaTipo(tipo){
   if(boletaLineas.length&&boletaTipo&&boletaTipo!==tipo&&!confirm('Cambiar el tipo de boleta va a limpiar los productos cargados. \u00bfQuer\u00e9s continuar?')) return;
   if(boletaTipo!==tipo&&boletaLineas.length) boletaLineas=[];
+  if(boletaTipo!==tipo){
+    boletaEditIdx=-1;
+    limpiarFormularioLineaBoleta(true);
+  }
   boletaTipo=tipo;
   renderBoletaUI();
 }
@@ -2337,6 +2356,10 @@ function actualizarResumenBoleta(){
 }
 
 function volverBoletaPaso(paso){
+  if(paso<3&&boletaEditIdx>=0){
+    boletaEditIdx=-1;
+    limpiarFormularioLineaBoleta(true);
+  }
   boletaPaso=paso;
   renderBoletaUI();
 }
@@ -2390,15 +2413,56 @@ function avanzarBoletaPaso2(){
   renderBoletaUI();
 }
 
-function getSalidaBoletaReservada(cod){
+function limpiarFormularioLineaBoleta(limpiarBusqueda=true){
+  ['bol-qty','bol-item-obs'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  const bus=document.getElementById('bol-bus');
+  if(bus&&limpiarBusqueda) bus.value='';
+  const sel=document.getElementById('bol-sel');
+  if(sel) sel.value='';
+  if(bus&&limpiarBusqueda) filtrarSel('', 'bol-sel');
+  else actuPrev('bol');
+}
+
+function cancelarEdicionBoleta(){
+  boletaEditIdx=-1;
+  limpiarFormularioLineaBoleta(true);
+  renderBoletaUI();
+}
+
+function editarLineaBoleta(idx){
+  const item=boletaLineas[idx];
+  if(!item) return;
+  boletaEditIdx=idx;
+  const bus=document.getElementById('bol-bus');
+  if(bus) bus.value=item.nombre||'';
+  filtrarSel(item.nombre||'', 'bol-sel');
+  const sel=document.getElementById('bol-sel');
+  if(sel) sel.value=String(item.cod);
+  const qty=document.getElementById('bol-qty');
+  if(qty) qty.value=item.cantidad;
+  const obs=document.getElementById('bol-item-obs');
+  if(obs) obs.value=item.nota||'';
+  actuPrev('bol');
+  renderBoletaUI();
+  if(bus){
+    bus.focus();
+    bus.select();
+  }
+}
+
+function getSalidaBoletaReservada(cod,omitIdx=-1){
   return boletaLineas
-    .filter(item=>item.cod===cod)
+    .filter((item,idx)=>item.cod===cod&&idx!==omitIdx)
     .reduce((acc,item)=>acc+item.cantidad,0);
 }
 
 function agregarLineaBoleta(){
   if(rol!=='editor') return;
   if(boletaPaso<3) return toast('Complet\u00e1 los pasos anteriores primero','err');
+  const editando=boletaEditIdx>=0&&boletaEditIdx<boletaLineas.length;
   const cod=parseInt(document.getElementById('bol-sel').value);
   const qty=parseInt(document.getElementById('bol-qty').value);
   const nota=document.getElementById('bol-item-obs').value.trim();
@@ -2407,18 +2471,25 @@ function agregarLineaBoleta(){
   const prod=PRODS.find(p=>p.c===cod);
   if(!prod) return toast('Producto no encontrado','err');
   if(boletaTipo==='salida'){
-    const disponible=getStk(cod)-getSalidaBoletaReservada(cod);
+    const disponible=getStk(cod)-getSalidaBoletaReservada(cod,editando?boletaEditIdx:-1);
     if(qty>disponible) return toast(`Stock insuficiente. Disponible: ${Math.max(disponible,0)}`,'err');
   }
-  boletaLineas.push({cod,nombre:prod.n,cantidad:qty,nota});
-  ['bol-bus','bol-qty','bol-item-obs'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('bol-sel').value='';
-  actuPrev('bol');
+  const linea={cod,nombre:prod.n,cantidad:qty,nota};
+  if(editando) boletaLineas[boletaEditIdx]=linea;
+  else boletaLineas.push(linea);
+  boletaEditIdx=-1;
+  limpiarFormularioLineaBoleta(true);
   renderBoletaUI();
-  toast('Producto agregado a la boleta','ok');
+  toast(editando?'Producto actualizado en la boleta':'Producto agregado a la boleta','ok');
 }
 
 function quitarLineaBoleta(idx){
+  if(boletaEditIdx===idx){
+    boletaEditIdx=-1;
+    limpiarFormularioLineaBoleta(true);
+  }else if(boletaEditIdx>idx){
+    boletaEditIdx-=1;
+  }
   boletaLineas.splice(idx,1);
   renderBoletaUI();
 }
@@ -2460,17 +2531,53 @@ function renderBoletaLineas(){
     return;
   }
   lista.innerHTML=boletaLineas.map((item,idx)=>`
-    <div class="boline">
+    <div class="boline ${idx===boletaEditIdx?'editing':''}">
       <div>
+        ${idx===boletaEditIdx?'<span class="boestado">Editando este item</span>':''}
         <strong>#${item.cod} \u2014 ${escapeHTML(item.nombre)}</strong>
         <span>Cantidad: ${item.cantidad}</span>
         <span>${item.nota?`Detalle: ${escapeHTML(item.nota)}`:'Sin detalle adicional'}</span>
       </div>
       <div style="text-align:right;">
         <div class="bocant ${boletaTipo==='entrada'?'v':'r'}">${boletaTipo==='entrada'?'+':'-'}${item.cantidad}</div>
-        <button class="btn btn-ol" style="padding:6px 12px;font-size:12px;margin-top:8px;" onclick="quitarLineaBoleta(${idx})">Quitar</button>
+        <div class="boitemacc">
+          <button class="btn btn-ol boiconbtn" title="Editar item" aria-label="Editar item" onclick="editarLineaBoleta(${idx})">&#9998;</button>
+          <button class="btn btn-ol" style="padding:6px 12px;font-size:12px;" onclick="quitarLineaBoleta(${idx})">Quitar</button>
+        </div>
       </div>
     </div>`).join('');
+}
+
+function renderBoletaEditor(){
+  const aviso=document.getElementById('bol-edit-state');
+  const btnSubmit=document.getElementById('bol-item-submit');
+  const btnCancel=document.getElementById('bol-item-cancel');
+  const bus=document.getElementById('bol-bus');
+  const busLabel=document.getElementById('bol-bus-label');
+  const editando=boletaEditIdx>=0&&boletaEditIdx<boletaLineas.length;
+  if(!aviso||!btnSubmit||!btnCancel||!bus||!busLabel) return;
+  if(editando){
+    const item=boletaLineas[boletaEditIdx];
+    aviso.classList.add('show');
+    aviso.innerHTML=`<div><strong>Editando item #${boletaEditIdx+1}</strong><span>Us\u00e1 el buscador para encontrar el producto correcto, cambi\u00e1 la cantidad y guard\u00e1 los cambios.</span></div>`;
+    btnSubmit.className='btn btn-na';
+    btnSubmit.textContent='Guardar cambios';
+    btnCancel.style.display='';
+    bus.placeholder='Busc\u00e1 el producto correcto para reemplazarlo...';
+    busLabel.textContent='Buscar producto para reemplazar';
+    if(item){
+      btnCancel.textContent=`Cancelar edici\u00f3n de #${item.cod}`;
+    }
+    return;
+  }
+  aviso.classList.remove('show');
+  aviso.innerHTML='';
+  btnSubmit.className='btn btn-k';
+  btnSubmit.textContent='Agregar producto';
+  btnCancel.style.display='none';
+  btnCancel.textContent='Cancelar edici\u00f3n';
+  bus.placeholder='Escrib\u00ed para filtrar...';
+  busLabel.textContent='Buscar producto';
 }
 
 function renderBoletaUI(){
@@ -2486,6 +2593,7 @@ function renderBoletaUI(){
   btn.textContent=isEnt?'Confirmar entrada con boleta':isSal?'Confirmar salida con boleta':'Confirmar boleta';
   renderBoletaResumen();
   renderBoletaLectura();
+  renderBoletaEditor();
   renderBoletaLineas();
 }
 
@@ -3190,11 +3298,11 @@ function manejarExcel(file){
 // ═══════════════════════════════════
 function exportarExcel(){
   const wb=XLSX.utils.book_new();
-  const sD=[['CODIGO','ARTICULO','STOCK INICIAL','ENTRADAS','SALIDAS','STOCK ACTUAL','MINIMO','PRECIO UNITARIO','PRECIO TOTAL']];
+  const sD=[['CODIGO','ARTICULO','STOCK ACTUAL','PRECIO UNITARIO','PRECIO TOTAL','STOCK INICIAL','ENTRADAS','SALIDAS','MINIMO']];
   PRODS.forEach(p=>{
     const s=stock[p.c]||{inicial:0,entradas:0,salidas:0};
     const precio=getPrice(p.c);
-    sD.push([p.c,p.n,s.inicial||0,s.entradas||0,s.salidas||0,getStk(p.c),mins[p.c]||0,precio,getValorProductoStock(p.c)]);
+    sD.push([p.c,p.n,getStk(p.c),precio,getValorProductoStock(p.c),s.inicial||0,s.entradas||0,s.salidas||0,mins[p.c]||0]);
   });
   sD.push([]);
   sD.push(['','','','','','','','VALOR TOTAL STOCK',getEstadoStockActual().valorTotal]);
