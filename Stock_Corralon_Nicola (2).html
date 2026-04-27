@@ -356,10 +356,25 @@ tr:hover td{background:#FEF6F0;}
 .histname{font-size:14px;font-weight:700;color:var(--K);line-height:1.4;}
 .histmeta{font-size:12px;color:var(--G);line-height:1.6;margin-top:4px;}
 .histnota{font-size:12px;color:var(--K);background:var(--Gc);border-radius:12px;padding:9px 11px;margin-top:10px;line-height:1.55;}
+.histacc{display:flex;flex-direction:column;align-items:flex-end;gap:10px;min-width:150px;}
 .histqty{text-align:right;font-size:20px;font-weight:700;white-space:nowrap;}
 .histqty.in{color:var(--V);}
 .histqty.out{color:var(--R);}
 .histqtysub{font-size:11px;color:var(--G);margin-top:5px;}
+.histadjbtn{padding:8px 14px;font-size:12px;min-width:110px;}
+.histajustestate{padding:12px 14px;border-radius:14px;background:var(--Gc);font-size:12px;color:var(--G);line-height:1.6;}
+.histajustestate strong{display:block;font-size:13px;color:var(--K);margin-bottom:4px;}
+.histajustebox{margin-top:16px;padding-top:16px;border-top:1px solid var(--Gc);}
+.histajustehelp{font-size:12px;color:var(--G);line-height:1.6;}
+.histajusteactions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+.histajusteactions .btn{flex:1;min-width:170px;}
+.histajusteitems{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.histajusteitem{border:1px solid var(--Gb);border-radius:14px;background:#FCFCFA;padding:14px;}
+.histajustehead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.histajustehead strong{font-size:13px;color:var(--K);}
+.histajustehead span{font-size:11px;color:var(--G);}
+.histajusteerr{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--Rc);color:#7B0000;font-size:12px;font-weight:600;display:none;}
+.histajusteerr.show{display:block;}
 .histempty,.cierresvacio{padding:24px;border:1px dashed var(--Gb);border-radius:16px;background:white;text-align:center;color:var(--G);}
 .mesresume{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px;}
 .mescard{background:white;border:1px solid var(--Gb);border-radius:14px;padding:12px 13px;}
@@ -399,6 +414,7 @@ tr:hover td{background:#FEF6F0;}
   .catfilters,.catgrid,.histfilters,.histlayout,.mesresume,.cierrestats{grid-template-columns:1fr;}
   .catcard{padding:14px;}
   .histitem{grid-template-columns:1fr;}
+  .histacc{align-items:flex-start;}
   .histqty{text-align:left;}
 }
 </style>
@@ -979,6 +995,40 @@ tr:hover td{background:#FEF6F0;}
   </div>
 </div>
 
+<div class="ov" id="ov-hist-ajuste">
+  <div class="modal">
+    <div class="modtit">Ajustar boleta <button class="modx" onclick="cerrarAjusteHistorial()">&#215;</button></div>
+    <div class="histajustestate" id="hist-ajuste-resumen"></div>
+    <div class="fgrp" style="margin-top:14px;">
+      <label>Contrasena de ajuste</label>
+      <input type="password" id="hist-ajuste-pass" placeholder="Ingresa la clave" onkeydown="if(event.key==='Enter')validarClaveAjusteHistorial()">
+    </div>
+    <div class="histajusteerr" id="hist-ajuste-pass-err"></div>
+    <div class="modacc" id="hist-ajuste-pass-acc">
+      <button class="btn btn-ol" onclick="cerrarAjusteHistorial()">Cancelar</button>
+      <button class="btn btn-na" onclick="validarClaveAjusteHistorial()">Validar</button>
+    </div>
+    <div id="hist-ajuste-acciones" style="display:none;">
+      <div class="histajustebox">
+        <div class="histajustehelp">Elige si quieres eliminar toda la boleta o corregir sus productos y cantidades. El stock general se actualiza en el momento al guardar.</div>
+        <div class="histajusteactions">
+          <button class="btn btn-r" onclick="eliminarBoletaDesdeHistorial()">Eliminar boleta</button>
+          <button class="btn btn-na" onclick="mostrarEdicionAjusteHistorial()">Modificar boleta</button>
+        </div>
+      </div>
+      <div class="histajustebox" id="hist-ajuste-editor" style="display:none;">
+        <div class="histajustehelp">Puedes cambiar el producto usando el listado existente o modificar la cantidad de cada linea de la boleta.</div>
+        <div class="histajusteitems" id="hist-ajuste-items"></div>
+        <div class="histajusteerr" id="hist-ajuste-edit-err"></div>
+        <div class="modacc">
+          <button class="btn btn-ol" onclick="cerrarAjusteHistorial()">Cancelar</button>
+          <button class="btn btn-na" onclick="guardarAjusteHistorial()">Guardar ajuste</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -986,6 +1036,7 @@ tr:hover td{background:#FEF6F0;}
 // CONFIGURACIÓN
 // ═══════════════════════════════════
 const PIN = '1011';
+const AJUSTE_PIN = '101184';
 const LEGACY_KEYS = {
   stock:'nicola_stock_v4',
   movs:'nicola_movs_v4',
@@ -1396,6 +1447,7 @@ let boletaLineas=[], boletaPaso=1, boletaEditIdx=-1;
 let boletaLecturaEstado='sin-lectura', boletaLecturaTexto='', boletaLecturaItems=[];
 let boletaLecturaNumero='', boletaLecturaFecha='', boletaLecturaMonto=0, boletaLecturaError='';
 let boletaLecturaProgreso='', boletaLecturaAplicada=false, boletaLecturaToken=0, boletaLecturaAutoAplicar=false;
+let historialAjusteCtx=null, historialAjusteAutorizado=false, historialAjusteItems=[];
 let saveT=null;
 let fbApp=null, db=null, estadoRef=null, estadoRemotoCache=null;
 let remotoInicializado=false, remotoSuscripto=false;
@@ -1553,6 +1605,57 @@ function sanitizarIdBoleta(valor){
 function extraerCampoNota(texto,regex){
   const match=String(texto||'').match(regex);
   return match?match[1].trim():'';
+}
+
+function extraerNumeroBoletaMovimiento(m){
+  const directo=String(m?.boletaNumero||'').trim();
+  if(directo) return directo;
+  return extraerCampoNota(m?.nota,/Boleta\s*#([^|]+)/i);
+}
+
+function clonarLineaAjusteBoleta(item){
+  const cod=Number(item?.cod)||0;
+  const prod=PRODS.find(p=>p.c===cod);
+  const nombre=prod?.n||String(item?.nombre||'').trim();
+  const cantidad=Math.max(1,Math.round(Number(item?.cantidad)||1));
+  return {
+    cod,
+    nombre,
+    cantidad,
+    nota:String(item?.nota||'').trim(),
+    originalCod:cod,
+    originalNombre:nombre,
+    originalCantidad:cantidad
+  };
+}
+
+function crearMapaStockClonado(){
+  const copia={};
+  Object.keys(stock||{}).forEach(cod=>{
+    const base=stock[cod]||{};
+    copia[cod]={
+      inicial:Number(base.inicial)||0,
+      entradas:Number(base.entradas)||0,
+      salidas:Number(base.salidas)||0
+    };
+  });
+  return copia;
+}
+
+function asegurarStockEnMapa(mapa,cod){
+  if(!mapa[cod]) mapa[cod]={inicial:0,entradas:0,salidas:0};
+}
+
+function getStkEnMapa(mapa,cod){
+  const s=mapa[cod]||{inicial:0,entradas:0,salidas:0};
+  return (Number(s.inicial)||0)+(Number(s.entradas)||0)-(Number(s.salidas)||0);
+}
+
+function aplicarCantidadEnMapa(mapa,tipo,cod,cantidad,signo=1){
+  asegurarStockEnMapa(mapa,cod);
+  const qty=Math.max(0,Number(cantidad)||0);
+  if(tipo==='entrada') mapa[cod].entradas=Math.max(0,(Number(mapa[cod].entradas)||0)+(qty*signo));
+  else mapa[cod].salidas=Math.max(0,(Number(mapa[cod].salidas)||0)+(qty*signo));
 }
 
 function confidenceValida(valor){
@@ -2917,7 +3020,10 @@ function getMovsPorPeriodo(periodo){
 }
 
 function getListaHistorialFiltrada(){
-  let lista=[...getMovsPorPeriodo(histMes)].reverse();
+  let lista=movs
+    .map((m,idx)=>({__idx:idx,...m}))
+    .filter(m=>String(m.fecha||'').startsWith(normalizarPeriodo(histMes)))
+    .reverse();
   if(histTipo!=='todos') lista=lista.filter(m=>m.tipo===histTipo);
   if(histBus){
     lista=lista.filter(m=>{
@@ -2926,6 +3032,323 @@ function getListaHistorialFiltrada(){
     });
   }
   return lista;
+}
+
+function resolverBoletaDesdeMovimiento(mov){
+  if(!mov) return null;
+  const tipo=mov.tipo==='salida'?'salida':'entrada';
+  const fecha=String(mov.fecha||'');
+  const numero=extraerNumeroBoletaMovimiento(mov);
+  const boletaId=String(mov.boletaId||'').trim();
+  const relacionados=movs
+    .map((item,idx)=>({item,idx}))
+    .filter(({item})=>{
+      if((item.tipo==='salida'?'salida':'entrada')!==tipo) return false;
+      if(boletaId) return String(item.boletaId||'').trim()===boletaId;
+      return String(item.fecha||'')===fecha&&normTxt(extraerNumeroBoletaMovimiento(item))===normTxt(numero);
+    });
+  if(!relacionados.length) return null;
+
+  let boletaIndex=-1;
+  if(boletaId) boletaIndex=boletas.findIndex(b=>String(b.id||'').trim()===boletaId);
+  if(boletaIndex<0) boletaIndex=boletas.findIndex(b=>(b.tipo==='salida'?'salida':'entrada')===tipo&&String(b.fecha||'')===fecha&&normTxt(b.numero)===normTxt(numero));
+
+  const boletaBase=boletaIndex>=0
+    ? normalizarBoletaGuardada(boletas[boletaIndex])
+    : normalizarBoletaGuardada({
+        id:boletaId||crearBoletaId('AJU'),
+        tipo,
+        numero,
+        fecha,
+        quien:extraerCampoNota(mov.nota,/Carg[o\u00f3]:\s*([^|]+)/i),
+        monto:parseMontoTexto(mov.nota),
+        archivo:{nombre:extraerCampoNota(mov.nota,/Adjunto:\s*([^|]+)/i),tipo:'',tamano:0,guardado:false},
+        lecturaEstado:'manual',
+        items:[],
+        createdAt:Number(mov.ts)||Date.now(),
+        updatedAt:Number(mov.ts)||Date.now(),
+        legacy:!boletaId
+      });
+
+  const itemsActuales=(boletaBase.items&&boletaBase.items.length?boletaBase.items:relacionados.map(({item})=>({
+    cod:Number(item.cod)||0,
+    nombre:String(item.nombre||'').trim(),
+    cantidad:Number(item.cantidad)||0,
+    nota:extraerCampoNota(item.nota,/Detalle:\s*([^|]+)/i)||'',
+    textoOriginal:String(item.nombre||'').trim(),
+    confianza:null
+  }))).map(clonarLineaAjusteBoleta);
+
+  return {
+    tipo,
+    fecha,
+    numero:boletaBase.numero||numero,
+    boleta:normalizarBoletaGuardada({
+      ...boletaBase,
+      items:itemsActuales.map(item=>({
+        cod:item.cod,
+        nombre:item.nombre,
+        cantidad:item.cantidad,
+        nota:item.nota,
+        textoOriginal:item.nombre,
+        confianza:null
+      })),
+      totalItems:itemsActuales.length
+    }),
+    boletaIndex,
+    movIndexes:relacionados.map(x=>x.idx),
+    movimientos:relacionados.map(x=>({__idx:x.idx,...x.item})),
+    hora:String(relacionados[0]?.item?.hora||''),
+    baseTs:Number(relacionados[0]?.item?.ts)||Number(boletaBase.createdAt)||Date.now()
+  };
+}
+
+function construirNotaMovimientoBoleta(boleta,item){
+  return [
+    `Boleta #${boleta.numero}`,
+    boleta.quien?`Cargo: ${boleta.quien}`:'',
+    Number(boleta.monto)>0?`Monto: $ ${formatearMonto(boleta.monto)}`:'',
+    boleta.archivo?.nombre?`Adjunto: ${boleta.archivo.nombre}`:'',
+    item.nota?`Detalle: ${item.nota}`:''
+  ].filter(Boolean).join(' | ');
+}
+
+function simularStockAjusteBoleta(ctx,nuevosItems){
+  const virtual=crearMapaStockClonado();
+  ctx.movimientos.forEach(m=>aplicarCantidadEnMapa(virtual,m.tipo,m.cod,m.cantidad,-1));
+  for(const item of nuevosItems){
+    if(ctx.tipo==='salida'){
+      const disponible=getStkEnMapa(virtual,item.cod);
+      if(item.cantidad>disponible){
+        return {error:`Stock insuficiente para ${item.nombre}. Disponible despues de deshacer la boleta: ${Math.max(disponible,0)}`};
+      }
+    }
+    aplicarCantidadEnMapa(virtual,ctx.tipo,item.cod,item.cantidad,1);
+  }
+  return {stock:virtual};
+}
+
+function setErrorAjusteHistorial(id,mensaje){
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(mensaje){
+    el.textContent=mensaje;
+    el.classList.add('show');
+  }else{
+    el.textContent='';
+    el.classList.remove('show');
+  }
+}
+
+function cerrarAjusteHistorial(){
+  historialAjusteCtx=null;
+  historialAjusteAutorizado=false;
+  historialAjusteItems=[];
+  const ov=document.getElementById('ov-hist-ajuste');
+  if(ov) ov.classList.remove('show');
+  const pass=document.getElementById('hist-ajuste-pass');
+  if(pass) pass.value='';
+  const acciones=document.getElementById('hist-ajuste-acciones');
+  if(acciones) acciones.style.display='none';
+  const editor=document.getElementById('hist-ajuste-editor');
+  if(editor) editor.style.display='none';
+  setErrorAjusteHistorial('hist-ajuste-pass-err','');
+  setErrorAjusteHistorial('hist-ajuste-edit-err','');
+}
+
+function abrirAjusteHistorial(idx){
+  if(rol!=='editor') return;
+  const mov=movs[idx];
+  const ctx=resolverBoletaDesdeMovimiento(mov);
+  if(!ctx) return toast('No se pudo identificar la boleta seleccionada','err');
+  historialAjusteCtx=ctx;
+  historialAjusteAutorizado=false;
+  historialAjusteItems=(ctx.boleta.items||[]).map(clonarLineaAjusteBoleta);
+  const resumen=document.getElementById('hist-ajuste-resumen');
+  if(resumen){
+    resumen.innerHTML=`<strong>Boleta #${escapeHTML(ctx.boleta.numero||'Sin numero')}</strong>
+    ${ctx.tipo==='entrada'?'Entrada':'Salida'} del ${escapeHTML(ctx.boleta.fecha||ctx.fecha||'Sin fecha')} · ${historialAjusteItems.length} linea(s) cargadas${Number(ctx.boleta.monto)>0?` · Monto: $ ${formatearMonto(ctx.boleta.monto)}`:''}`;
+  }
+  const acciones=document.getElementById('hist-ajuste-acciones');
+  if(acciones) acciones.style.display='none';
+  const editor=document.getElementById('hist-ajuste-editor');
+  if(editor) editor.style.display='none';
+  setErrorAjusteHistorial('hist-ajuste-pass-err','');
+  setErrorAjusteHistorial('hist-ajuste-edit-err','');
+  const ov=document.getElementById('ov-hist-ajuste');
+  if(ov) ov.classList.add('show');
+  const pass=document.getElementById('hist-ajuste-pass');
+  if(pass){
+    pass.value='';
+    setTimeout(()=>pass.focus(),60);
+  }
+}
+
+function validarClaveAjusteHistorial(){
+  const pass=document.getElementById('hist-ajuste-pass');
+  if(!pass) return;
+  if(String(pass.value||'').trim()!==AJUSTE_PIN){
+    historialAjusteAutorizado=false;
+    setErrorAjusteHistorial('hist-ajuste-pass-err','Contrasena incorrecta para ajustar boletas.');
+    pass.focus();
+    pass.select();
+    return;
+  }
+  historialAjusteAutorizado=true;
+  setErrorAjusteHistorial('hist-ajuste-pass-err','');
+  const acciones=document.getElementById('hist-ajuste-acciones');
+  if(acciones) acciones.style.display='block';
+  toast('Clave correcta. Ya puedes ajustar la boleta','ok');
+}
+
+function renderEditorAjusteHistorial(){
+  const cont=document.getElementById('hist-ajuste-items');
+  if(!cont||!historialAjusteCtx) return;
+  const opciones='<option value="">- Selecciona un producto -</option>'+
+    PRODS.map(p=>`<option value="${p.c}">[${p.c}] ${escapeHTML(p.n)}</option>`).join('');
+  cont.innerHTML=historialAjusteItems.map((item,idx)=>{
+    const actual=PRODS.find(p=>p.c===Number(item.cod));
+    return `<div class="histajusteitem">
+      <div class="histajustehead">
+        <strong>Linea ${idx+1}</strong>
+        <span>Original: ${escapeHTML(item.originalNombre)} x ${item.originalCantidad}</span>
+      </div>
+      <div class="fgrid">
+        <div class="fgrp">
+          <label>Producto</label>
+          <select onchange="cambiarProductoAjusteHistorial(${idx},this.value)">${opciones}</select>
+        </div>
+        <div class="fgrp">
+          <label>Cantidad</label>
+          <input type="number" min="1" value="${Math.max(1,Number(item.cantidad)||1)}" oninput="cambiarCantidadAjusteHistorial(${idx},this.value)">
+        </div>
+      </div>
+      <div class="histajustehelp" style="margin-top:10px;">Seleccion actual: ${escapeHTML(actual?.n||item.nombre||'Sin producto')} · Stock actual: ${getStk(Number(item.cod)||0).toLocaleString('es-UY')}</div>
+    </div>`;
+  }).join('');
+  const selects=cont.querySelectorAll('select');
+  historialAjusteItems.forEach((item,idx)=>{
+    if(selects[idx]) selects[idx].value=String(item.cod||'');
+  });
+}
+
+function mostrarEdicionAjusteHistorial(){
+  if(!historialAjusteAutorizado||!historialAjusteCtx) return;
+  const editor=document.getElementById('hist-ajuste-editor');
+  if(editor) editor.style.display='block';
+  setErrorAjusteHistorial('hist-ajuste-edit-err','');
+  renderEditorAjusteHistorial();
+}
+
+function cambiarProductoAjusteHistorial(idx,val){
+  const item=historialAjusteItems[idx];
+  if(!item) return;
+  const cod=parseInt(val)||0;
+  const prod=PRODS.find(p=>p.c===cod);
+  item.cod=cod;
+  item.nombre=prod?prod.n:'';
+  renderEditorAjusteHistorial();
+}
+
+function cambiarCantidadAjusteHistorial(idx,val){
+  const item=historialAjusteItems[idx];
+  if(!item) return;
+  item.cantidad=Math.max(0,parseInt(val)||0);
+}
+
+function eliminarBoletaDesdeHistorial(){
+  if(!historialAjusteAutorizado||!historialAjusteCtx) return;
+  const boleta=historialAjusteCtx.boleta;
+  if(!confirm(`Eliminar la boleta #${boleta.numero||'sin numero'} del historial y ajustar el stock ahora?`)) return;
+  const sim=simularStockAjusteBoleta(historialAjusteCtx,[]);
+  if(sim.error) return toast(sim.error,'err');
+  stock=sim.stock;
+  const quitar=new Set(historialAjusteCtx.movIndexes);
+  movs=movs.filter((_,idx)=>!quitar.has(idx));
+  if(historialAjusteCtx.boletaIndex>=0) boletas.splice(historialAjusteCtx.boletaIndex,1);
+  else{
+    boletas=boletas.filter(b=>!((b.tipo==='salida'?'salida':'entrada')===historialAjusteCtx.tipo&&String(b.fecha||'')===String(historialAjusteCtx.fecha||'')&&normTxt(b.numero)===normTxt(historialAjusteCtx.numero)));
+  }
+  boletas=fusionarBoletasGuardadas(boletas,movs);
+  guardar();
+  renderTodo();
+  cerrarAjusteHistorial();
+  toast('Boleta eliminada y stock ajustado','ok');
+}
+
+function guardarAjusteHistorial(){
+  if(!historialAjusteAutorizado||!historialAjusteCtx) return;
+  const nuevosItems=[];
+  for(let i=0;i<historialAjusteItems.length;i++){
+    const raw=historialAjusteItems[i];
+    const cod=parseInt(raw.cod)||0;
+    const cantidad=parseInt(raw.cantidad)||0;
+    const prod=PRODS.find(p=>p.c===cod);
+    if(!prod) return setErrorAjusteHistorial('hist-ajuste-edit-err',`Selecciona un producto valido en la linea ${i+1}.`);
+    if(cantidad<=0) return setErrorAjusteHistorial('hist-ajuste-edit-err',`La cantidad de la linea ${i+1} debe ser mayor a 0.`);
+    nuevosItems.push({
+      cod:prod.c,
+      nombre:prod.n,
+      cantidad,
+      nota:String(raw.nota||'').trim()
+    });
+  }
+  setErrorAjusteHistorial('hist-ajuste-edit-err','');
+  const sinCambios=JSON.stringify(nuevosItems.map(item=>[item.cod,item.cantidad]))===JSON.stringify((historialAjusteCtx.boleta.items||[]).map(item=>[Number(item.cod)||0,Number(item.cantidad)||0]));
+  if(sinCambios){
+    cerrarAjusteHistorial();
+    return toast('No hubo cambios para guardar en la boleta','info');
+  }
+  const sim=simularStockAjusteBoleta(historialAjusteCtx,nuevosItems);
+  if(sim.error) return setErrorAjusteHistorial('hist-ajuste-edit-err',sim.error);
+
+  stock=sim.stock;
+  const quitar=new Set(historialAjusteCtx.movIndexes);
+
+  const boletaActualizada=normalizarBoletaGuardada({
+    ...historialAjusteCtx.boleta,
+    items:nuevosItems.map(item=>({
+      cod:item.cod,
+      nombre:item.nombre,
+      cantidad:item.cantidad,
+      nota:item.nota,
+      textoOriginal:item.nombre,
+      confianza:null
+    })),
+    totalItems:nuevosItems.length,
+    updatedAt:Date.now()
+  });
+
+  const fecha=boletaActualizada.fecha||historialAjusteCtx.fecha||hoy();
+  const hora=historialAjusteCtx.hora||new Date().toTimeString().slice(0,5);
+  const nuevosMovs=nuevosItems.map((item,idx)=>({
+      tipo:historialAjusteCtx.tipo,
+      cod:item.cod,
+      nombre:item.nombre,
+      cantidad:item.cantidad,
+      fecha,
+      hora,
+      nota:construirNotaMovimientoBoleta(boletaActualizada,item),
+      boletaId:boletaActualizada.id,
+      boletaNumero:boletaActualizada.numero,
+      ts:historialAjusteCtx.baseTs+idx
+    }));
+  const primerIndice=Math.min(...historialAjusteCtx.movIndexes);
+  const movsRearmados=[];
+  movs.forEach((mov,idx)=>{
+    if(idx===primerIndice) movsRearmados.push(...nuevosMovs);
+    if(!quitar.has(idx)) movsRearmados.push(mov);
+  });
+  if(primerIndice>=movs.length) movsRearmados.push(...nuevosMovs);
+  movs=movsRearmados;
+
+  if(historialAjusteCtx.boletaIndex>=0) boletas.splice(historialAjusteCtx.boletaIndex,1,boletaActualizada);
+  else boletas.unshift(boletaActualizada);
+  boletas=fusionarBoletasGuardadas(boletas,movs);
+  guardar();
+  renderTodo();
+  cerrarAjusteHistorial();
+  toast('Boleta ajustada y stock actualizado','ok');
 }
 
 function renderCierres(periodo){
@@ -3003,10 +3426,14 @@ function renderHist(){
     renderCierres(histMes);
     return;
   }
+  const boletasVistas=new Set();
   listaCont.innerHTML=lista.map(m=>{
     const entrada=m.tipo==='entrada';
     const conBoleta=!!m.boletaId||/Boleta\s*#/i.test(String(m.nota||''));
     const tipoTxt=entrada?(conBoleta?'Entrada con boleta':'Entrada'):(conBoleta?'Salida con boleta':'Salida');
+    const claveBoleta=conBoleta?(String(m.boletaId||'').trim()?`id:${String(m.boletaId||'').trim()}`:`ref:${m.tipo}|${m.fecha}|${normTxt(extraerNumeroBoletaMovimiento(m))}`):'';
+    const mostrarAjuste=rol==='editor'&&conBoleta&&claveBoleta&&!boletasVistas.has(claveBoleta);
+    if(mostrarAjuste) boletasVistas.add(claveBoleta);
     return `<div class="histitem">
       <div class="histicon ${entrada?'in':'out'}">${entrada?'+':'-'}</div>
       <div class="histbody">
@@ -3019,9 +3446,12 @@ function renderHist(){
         </div>
         ${m.nota?`<div class="histnota">${m.nota}</div>`:''}
       </div>
-      <div class="histqty ${entrada?'in':'out'}">
-        ${entrada?'+':'-'}${(Number(m.cantidad)||0).toLocaleString('es-UY')}
-        <div class="histqtysub">${entrada?'Unidades ingresadas':'Unidades salidas'}</div>
+      <div class="histacc">
+        <div class="histqty ${entrada?'in':'out'}">
+          ${entrada?'+':'-'}${(Number(m.cantidad)||0).toLocaleString('es-UY')}
+          <div class="histqtysub">${entrada?'Unidades ingresadas':'Unidades salidas'}</div>
+        </div>
+        ${mostrarAjuste?`<button class="btn btn-ol histadjbtn" onclick="abrirAjusteHistorial(${m.__idx})">AJUSTAR</button>`:''}
       </div>
     </div>`;
   }).join('');
