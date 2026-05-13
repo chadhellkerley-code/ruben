@@ -2467,6 +2467,31 @@ function volverBoletaPaso(paso){
   renderBoletaUI();
 }
 
+function buscarBoletaDuplicadaPorNumero(numero,excluirId=''){
+  const numeroNorm=normTxt(numero);
+  const idExcluido=String(excluirId||'').trim();
+  if(!numeroNorm) return null;
+  return (Array.isArray(boletas)?boletas:[]).find(item=>{
+    const boleta=normalizarBoletaGuardada(item);
+    if(idExcluido&&String(boleta.id||'').trim()===idExcluido) return false;
+    return normTxt(boleta.numero)===numeroNorm;
+  })||null;
+}
+
+function validarNumeroBoletaDisponible(numero,excluirId=''){
+  const duplicada=buscarBoletaDuplicadaPorNumero(numero,excluirId);
+  if(!duplicada) return true;
+  const input=document.getElementById('bol-numero');
+  if(input){
+    input.focus();
+    if(typeof input.select==='function') input.select();
+  }
+  const tipoTxt=duplicada.tipo==='salida'?'salida':'entrada';
+  const fechaTxt=duplicada.fecha||'sin fecha';
+  toast(`La boleta #${duplicada.numero||String(numero||'').trim()} ya existe (${tipoTxt} del ${fechaTxt})`,'err');
+  return false;
+}
+
 function avanzarBoletaPaso1(){
   if(rol!=='editor') return;
   const numero=document.getElementById('bol-numero').value.trim();
@@ -2474,6 +2499,7 @@ function avanzarBoletaPaso1(){
   if(!boletaTipo) return toast('Eleg\u00ed Entrada o Salida','err');
   if(!numero) return toast('Ingres\u00e1 el n\u00famero de boleta','err');
   if(!fecha) return toast('Ingres\u00e1 la fecha de la boleta','err');
+  if(!validarNumeroBoletaDisponible(numero)) return;
   boletaPaso=2;
   renderBoletaUI();
 }
@@ -2709,6 +2735,7 @@ function confirmarBoleta(){
   const montoVal=document.getElementById('bol-monto').value;
   const monto=parseFloat(montoVal);
   if(!numero) return toast('Ingres\u00e1 el n\u00famero de boleta','err');
+  if(!validarNumeroBoletaDisponible(numero)) return;
   if(!boletaArchivoNombre&&(!montoVal||!isFinite(monto)||monto<=0)) return toast('Adjunt\u00e1 una foto o carg\u00e1 un monto mayor a 0','err');
   if(!boletaLineas.length) return toast('Agreg\u00e1 al menos un producto','err');
 
